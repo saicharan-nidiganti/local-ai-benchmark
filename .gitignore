@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.pytest_cache/
+.mypy_cache/
+data/raw/*.jsonl
+data/processed/*
+reports/figures/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!reports/figures/.gitkeep

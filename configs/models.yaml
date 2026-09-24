@@ -1,0 +1,5 @@
+models:
+  - id: qwen3-4b
+    name: qwen3:4b
+    role: baseline
+    quantization: Q4_K_M

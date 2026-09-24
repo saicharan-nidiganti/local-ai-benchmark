@@ -1,0 +1,6 @@
+benchmark:
+  repeats: 5
+  warmup_runs: 1
+  temperature: 0.0
+  max_output_tokens: 256
+  keep_alive: "5m"
