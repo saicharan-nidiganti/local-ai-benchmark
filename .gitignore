@@ -10,3 +10,6 @@ reports/figures/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !reports/figures/.gitkeep
+*.egg-info/
+build/
+dist/
