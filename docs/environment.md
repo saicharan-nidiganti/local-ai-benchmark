@@ -73,6 +73,12 @@ Even this 3B model does not fully fit in the 4 GB of VRAM at a 4096-token contex
 makes the context length a variable worth measuring in the comparison
 ([#23](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/23)).
 
+## Baseline
+
+The first full benchmark on this machine is published in
+[results/2026-11-13-qwen3-4b-baseline](../results/2026-11-13-qwen3-4b-baseline/): qwen3:4b at
+30.8 tokens/s and 47 ms to the first token once loaded, with 66% of the model on the GPU.
+
 ## Recording your own environment
 
 ```bash

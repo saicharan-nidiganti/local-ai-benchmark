@@ -6,8 +6,15 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-13
+
+The measurement harness (Phase 1) and the first published baseline.
+
 ### Added
 
+- Baseline results for qwen3:4b on the reference laptop in `results/`: 30.8 tokens/s, 47 ms
+  to the first token, 66% of the model on the 4 GB GPU, 320 J per 256-token answer
+  ([#17](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/17)).
 - Offline test suite (13 tests) for the inference client, the CLI and the summaries, run in
   CI on Python 3.11 to 3.14 ([#3](https://github.com/saicharan-nidiganti/local-ai-benchmark/pull/3)).
 - `local-ai-benchmark` console script ([#3](https://github.com/saicharan-nidiganti/local-ai-benchmark/pull/3)).
@@ -72,3 +79,6 @@ All notable changes to this project are recorded here. The format follows
   wrote a second `runs.jsonl` elsewhere. It now resolves to `data/raw/` in the project folder
   (or the folder named by `LOCAL_AI_BENCHMARK_HOME`)
   ([#16](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/16)).
+
+[Unreleased]: https://github.com/saicharan-nidiganti/local-ai-benchmark/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/saicharan-nidiganti/local-ai-benchmark/releases/tag/v0.1.0
