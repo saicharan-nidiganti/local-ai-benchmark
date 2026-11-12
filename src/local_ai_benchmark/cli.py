@@ -7,7 +7,6 @@ from pathlib import Path
 from .inference import generate
 from .metrics import append_jsonl, summarize, utc_timestamp
 
-
 DEFAULT_OUTPUT = Path("data/raw/runs.jsonl")
 
 

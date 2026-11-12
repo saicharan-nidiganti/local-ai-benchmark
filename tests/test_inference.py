@@ -24,7 +24,11 @@ FINAL_CHUNK = {
 
 
 def test_collects_streamed_text_and_runtime_metrics(monkeypatch):
-    chunks = [{"response": "Hello", "done": False}, {"response": " world", "done": False}, FINAL_CHUNK]
+    chunks = [
+        {"response": "Hello", "done": False},
+        {"response": " world", "done": False},
+        FINAL_CHUNK,
+    ]
     monkeypatch.setattr(inference.ollama, "generate", fake_stream(chunks))
 
     result = inference.generate(model="m", prompt="p")

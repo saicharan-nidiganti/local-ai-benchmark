@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from typing import Any
 
 import ollama
@@ -74,9 +74,7 @@ def generate(
         prompt_eval_count = final.get("prompt_eval_count")
         prompt_eval_duration_ns = final.get("prompt_eval_duration")
 
-        generation_ms = (
-            eval_duration_ns / 1_000_000 if eval_duration_ns is not None else None
-        )
+        generation_ms = eval_duration_ns / 1_000_000 if eval_duration_ns is not None else None
         tokens_per_sec = (
             eval_count / (eval_duration_ns / 1_000_000_000)
             if eval_count is not None and eval_duration_ns
@@ -97,9 +95,7 @@ def generate(
             ),
             prompt_tokens=prompt_eval_count,
             prompt_eval_duration_ms=(
-                prompt_eval_duration_ns / 1_000_000
-                if prompt_eval_duration_ns is not None
-                else None
+                prompt_eval_duration_ns / 1_000_000 if prompt_eval_duration_ns is not None else None
             ),
         )
 
@@ -109,9 +105,7 @@ def generate(
             model=model,
             prompt=prompt,
             response="",
-            ttft_ms=(
-                (first_token_at - start) * 1000 if first_token_at else None
-            ),
+            ttft_ms=((first_token_at - start) * 1000 if first_token_at else None),
             total_latency_ms=(end - start) * 1000,
             output_tokens=None,
             generation_ms=None,

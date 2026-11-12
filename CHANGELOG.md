@@ -11,6 +11,11 @@ All notable changes to this project are recorded here. The format follows
 - Offline test suite (13 tests) for the inference client, the CLI and the summaries, run in
   CI on Python 3.11 to 3.14 ([#3](https://github.com/saicharan-nidiganti/local-ai-benchmark/pull/3)).
 - `local-ai-benchmark` console script ([#3](https://github.com/saicharan-nidiganti/local-ai-benchmark/pull/3)).
+- Development toolchain: uv with a committed lockfile, Ruff, mypy `--strict`, a 90% coverage
+  floor, pre-commit hooks, `.editorconfig` and `.gitattributes`, and Makefile targets that CI
+  calls. CI now runs lint and types, tests on Python 3.11 to 3.14 and on Windows, and a
+  package check that installs the built wheel alone
+  ([#6](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/6)).
 
 ### Changed
 

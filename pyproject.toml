@@ -28,9 +28,16 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
-[project.optional-dependencies]
+# Development tools, installed by `uv sync` (or `pip install --group dev` with pip 25.1+).
+[dependency-groups]
 dev = [
+    "mypy>=1.13",
+    "pre-commit>=4.0",
     "pytest>=8.0",
+    "pytest-cov>=6.0",
+    "ruff>=0.8",
+    "types-psutil",
+    "types-PyYAML",
 ]
 
 [project.urls]
@@ -50,3 +57,32 @@ packages = ["src/local_ai_benchmark"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = ["--strict-markers", "--strict-config"]
+
+[tool.coverage.run]
+source = ["local_ai_benchmark"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true
+exclude_also = ["if __name__ == .__main__.:"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "PTH", "C4"]
+ignore = ["S101"]  # assert is fine in tests and for invariants
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src"]
+mypy_path = "src"

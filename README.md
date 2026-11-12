@@ -56,27 +56,26 @@ flowchart LR
 
 ## Quickstart
 
-Requires Python 3.11+ and a running Ollama with a model pulled.
+Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), and a running Ollama with a model
+pulled.
 
 ```bash
 ollama pull qwen3:4b
 
 git clone https://github.com/saicharan-nidiganti/local-ai-benchmark.git && cd local-ai-benchmark
-python -m venv .venv
-source .venv/bin/activate          # Windows PowerShell: .\.venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
+uv sync                            # creates .venv from uv.lock, with the dev tools
 ```
 
 Run a single prompt and print its metrics:
 
 ```bash
-local-ai-benchmark ask --model qwen3:4b --prompt "Explain TCP vs UDP in 5 bullet points."
+uv run local-ai-benchmark ask --model qwen3:4b --prompt "Explain TCP vs UDP in 5 bullet points."
 ```
 
 Benchmark one prompt with one warm-up run and five measured runs:
 
 ```bash
-local-ai-benchmark benchmark --model qwen3:4b \
+uv run local-ai-benchmark benchmark --model qwen3:4b \
   --prompt "Explain TCP vs UDP in 5 bullet points." \
   --repeats 5 --warmup-runs 1 --temperature 0 --max-output-tokens 256
 ```
@@ -99,14 +98,17 @@ fixed, and record them with the results:
 ## Testing
 
 ```bash
-python -m pytest
+make check                         # lint, strict type check, tests with coverage
 ```
+
+Without make (for example in Windows PowerShell), run the commands from the
+[Makefile](Makefile): `uv run ruff check .`, `uv run mypy`, `uv run python -m pytest --cov`.
 
 The suite is offline: it replaces the Ollama client with a simulated token stream, so it
 needs no model or server. It covers metric calculation, throughput edge cases, connection
 failures and streams that fail partway, warm-up exclusion, and the settings stored with
-each run. CI runs it, plus a check that the installed CLI starts, on Python 3.11, 3.12,
-3.13, and 3.14.
+each run. CI runs Ruff, mypy `--strict`, and the tests (coverage floor 90%) on Python 3.11
+to 3.14 and on Windows, and checks that the built wheel installs and runs.
 
 ## Roadmap
 
