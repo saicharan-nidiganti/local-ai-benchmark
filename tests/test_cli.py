@@ -38,7 +38,19 @@ def test_benchmark_excludes_warmup_runs_from_the_dataset(monkeypatch, tmp_path):
     monkeypatch.setattr(cli, "generate", fake_generate)
     output = tmp_path / "runs.jsonl"
     args = cli.build_parser().parse_args(
-        ["benchmark", "--model", "m", "--prompt", "p", "--repeats", "3", "--warmup-runs", "2", "--output", str(output)]
+        [
+            "benchmark",
+            "--model",
+            "m",
+            "--prompt",
+            "p",
+            "--repeats",
+            "3",
+            "--warmup-runs",
+            "2",
+            "--output",
+            str(output),
+        ]
     )
 
     args.func(args)
@@ -53,8 +65,21 @@ def test_benchmark_records_the_settings_of_every_run(monkeypatch, tmp_path):
     monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
     output = tmp_path / "runs.jsonl"
     args = cli.build_parser().parse_args(
-        ["benchmark", "--model", "m", "--prompt", "p", "--repeats", "2", "--temperature", "0.7",
-         "--max-output-tokens", "128", "--output", str(output)]
+        [
+            "benchmark",
+            "--model",
+            "m",
+            "--prompt",
+            "p",
+            "--repeats",
+            "2",
+            "--temperature",
+            "0.7",
+            "--max-output-tokens",
+            "128",
+            "--output",
+            str(output),
+        ]
     )
 
     args.func(args)
@@ -69,7 +94,9 @@ def test_benchmark_records_the_settings_of_every_run(monkeypatch, tmp_path):
 def test_ask_appends_one_record_and_creates_the_output_folder(monkeypatch, tmp_path):
     monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
     output = tmp_path / "nested" / "runs.jsonl"
-    args = cli.build_parser().parse_args(["ask", "--model", "m", "--prompt", "p", "--output", str(output)])
+    args = cli.build_parser().parse_args(
+        ["ask", "--model", "m", "--prompt", "p", "--output", str(output)]
+    )
 
     args.func(args)
 
