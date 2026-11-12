@@ -1,3 +1,5 @@
+"""Stream one generation from Ollama and time it."""
+
 from __future__ import annotations
 
 import time
@@ -5,6 +7,10 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 import ollama
+
+# A run whose reply has no visible text is a failure, even when the runtime reports tokens:
+# its throughput describes output nobody can use, so it must not enter the medians.
+EMPTY_RESPONSE = "empty_response: the model returned no visible text"
 
 
 @dataclass
@@ -97,6 +103,7 @@ def generate(
             prompt_eval_duration_ms=(
                 prompt_eval_duration_ns / 1_000_000 if prompt_eval_duration_ns is not None else None
             ),
+            error=None if response.strip() else EMPTY_RESPONSE,
         )
 
     except Exception as exc:

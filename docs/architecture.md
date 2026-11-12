@@ -212,8 +212,8 @@ pyproject.toml, uv.lock   package metadata, tool settings, locked dependencies
 
 **Error handling.** `generate()` catches every exception and returns an `InferenceResult`
 with `error` set, keeping a TTFT if text had already arrived. A benchmark therefore always
-completes and reports its error rate (NFR-4). Known gap: an empty reply counts as a success
-until [#9](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/9).
+completes and reports its error rate (NFR-4). A reply with no visible text is a failure too
+(`empty_response`), with the runtime's token counts kept for diagnosis.
 
 **Reproducibility.** Today: warm-up exclusion, temperature and output limit recorded on
 benchmark runs, thinking disabled, every observation kept. Planned in Phase 1: pinned `seed`
@@ -238,7 +238,7 @@ command-line flags; the effective values are recorded on every run.
 | Reproducibility | Fixed settings within a benchmark; warm-up exclusion; raw log kept | Seed, context length, run ID, manifest (#12, #13, #14) |
 | Measurement validity | Client TTFT plus runtime durations; medians; thinking disabled | Prefill speed, p90 and IQR (#13); resource samples (#15) |
 | Privacy | Local runtime only; no telemetry; raw log git-ignored | Local-only host enforced (#27) |
-| Robustness | Failures recorded, never raised | Empty reply as failure (#9); preflight (#10) |
+| Robustness | Failures recorded, never raised; an empty reply is a failure | Preflight (#10) |
 | Testability | Offline tests with simulated streams; 96% coverage | Fakes for the sampler and manifest |
 | Maintainability | src layout, strict typing, Ruff, locked dependencies, ADRs | Protected `main` (#8) |
 | Portability | Windows and Linux in CI | |

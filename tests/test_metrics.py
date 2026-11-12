@@ -30,6 +30,18 @@ def test_summarize_error():
     assert result["error_rate"] == 0.5
 
 
+def test_an_empty_reply_counts_as_an_error_and_stays_out_of_the_medians():
+    rows = [
+        {"error": "empty_response: the model returned no visible text", "tokens_per_sec": 99},
+        {"error": None, "total_latency_ms": 200, "ttft_ms": 20, "tokens_per_sec": 5},
+    ]
+
+    result = summarize(rows)
+
+    assert result["error_rate"] == 0.5
+    assert result["median_tokens_per_sec"] == 5
+
+
 def test_summarize_all_runs_failed():
     result = summarize([{"error": "timeout"}, {"error": "timeout"}])
 

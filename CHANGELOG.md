@@ -39,3 +39,6 @@ All notable changes to this project are recorded here. The format follows
 - Thinking models (such as qwen3) spent the output budget on hidden reasoning, leaving the
   reply empty and TTFT unmeasured; thinking is now disabled on every request
   ([#4](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/4)).
+- A reply with no visible text was counted as a successful run, so its throughput entered
+  the medians; it is now a failure, `empty_response`, with the runtime's counts kept
+  ([#9](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/9)).
