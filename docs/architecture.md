@@ -41,7 +41,7 @@ flowchart LR
 | CLI process | Python 3.11+, `local-ai-benchmark` console script | One per command | Stateless between commands; all state is in files |
 | Ollama server | Ollama 0.40 (reference), HTTP on `localhost:11434` | Long-running service | Keeps a model loaded for `keep_alive` (5 minutes by default here) |
 | Run log | JSON Lines, `data/raw/runs.jsonl` | Append-only, git-ignored | [ADR-0003](decisions/0003-append-only-jsonl-run-log.md) |
-| Configuration | YAML, `configs/` | Versioned in git | Not read yet: **planned**, Phase 1 ([#12](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/12)) |
+| Configuration | YAML, `configs/benchmark.yaml` and `configs/models.yaml` | Versioned in git | Read on every command; flags override ([ADR-0006](decisions/0006-configuration-and-pinned-settings.md)) |
 | Task suites | JSON Lines, `benchmarks/` | Versioned in git | Not read yet: **planned**, Phase 2 ([#19](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/19)) |
 | Reports | Markdown and figures, `reports/` | Curated output committed | **Planned**, Phase 3 ([#25](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/25)) |
 
@@ -54,7 +54,7 @@ flowchart TB
         cli["cli.py<br/>parses arguments,<br/>runs ask and benchmark"]
         inference["inference.py<br/>streams one generation,<br/>times it, never raises"]
         metrics["metrics.py<br/>appends records,<br/>computes medians"]
-        config["config.py<br/>YAML settings<br/>Phase 1 · #12"]:::planned
+        config["config.py<br/>settings and model registry,<br/>flags override files"]
         preflight["preflight.py<br/>server and model checks<br/>Phase 1 · #10"]:::planned
         manifest["manifest.py<br/>environment manifest<br/>Phase 1 · #14"]:::planned
         sampler["sampler.py<br/>RAM, VRAM, power<br/>Phase 1 · #15"]:::planned
@@ -85,7 +85,8 @@ Solid boxes and arrows exist today; dashed ones are planned.
 | Module | Responsibility | Public interface | Depends on |
 | --- | --- | --- | --- |
 | `cli.py` | Parse arguments; run `ask` (one request) and `benchmark` (warm-ups, then measured runs); print results | `main()`, `build_parser()`, `ask(args)`, `benchmark(args)` | `inference`, `metrics` |
-| `inference.py` | Stream one generation from Ollama, time the first token on the client, read the runtime's durations, and turn any failure into a recorded error | `generate(model, prompt, temperature, max_output_tokens, keep_alive) -> InferenceResult` | `ollama` client |
+| `inference.py` | Stream one generation from Ollama, time the first token on the client, read the runtime's durations, and turn any failure into a recorded error | `generate(model, prompt, settings) -> InferenceResult` | `ollama` client, `config` |
+| `config.py` | Load `benchmark.yaml` and `models.yaml`, validate every key and type, apply command-line overrides, resolve a model id to its Ollama tag | `load_settings(path)`, `with_overrides(settings, **flags)`, `load_models(path)`, `resolve_model(name, models)`, `GenerationSettings.options()` | PyYAML |
 | `metrics.py` | Append one record per line to the run log; summarize a list of records | `append_jsonl(path, record)`, `summarize(records)`, `utc_timestamp()` | standard library |
 | `paths.py` | Locate the project folder (`LOCAL_AI_BENCHMARK_HOME`, else the source checkout, else the working folder) and the default run log in it | `project_root()`, `default_run_log()` | standard library |
 
@@ -154,8 +155,12 @@ One JSON object per line in `data/raw/runs.jsonl`. Version 1, as written today:
 | `timestamp` | string | ISO 8601, UTC | CLI | When the record was written |
 | `run_type` | string | | CLI | `single` (ask) or `benchmark` |
 | `run_index` | integer | | CLI | 1 to N; benchmark only |
-| `temperature` | number | | CLI | Benchmark only |
-| `max_output_tokens` | integer | tokens | CLI | Benchmark only; sent as Ollama's `num_predict` |
+| `model_id` | string | | registry | The id from `configs/models.yaml`, or the tag itself when the model is not registered |
+| `temperature` | number | | settings | |
+| `max_output_tokens` | integer | tokens | settings | Sent as Ollama's `num_predict` |
+| `seed` | integer | | settings | Sampling seed, pinned |
+| `num_ctx` | integer | tokens | settings | Context length, pinned; it also sets the model's memory footprint |
+| `keep_alive` | string | duration | settings | How long Ollama keeps the model loaded |
 | `model` | string | | request | Ollama model tag, for example `qwen3:4b` |
 | `prompt` | string | | request | Full prompt text |
 | `response` | string | | stream | Concatenated visible reply |
@@ -169,9 +174,8 @@ One JSON object per line in `data/raw/runs.jsonl`. Version 1, as written today:
 | `prompt_eval_duration_ms` | number or null | ms | Ollama `prompt_eval_duration` | |
 | `error` | string or null | | inference | `ExceptionType: message`; null on success |
 
-**Planned fields**, added without removing any of the above: `run_id`, `seed`, `num_ctx`,
-`think` and `keep_alive` (Phase 1, [#11](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/11),
-[#12](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/12),
+**Planned fields**, added without removing any of the above: `run_id` and `think` (Phase 1,
+[#11](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/11),
 [#13](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/13)); a manifest
 reference and resource samples (Phase 1, [#14](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/14),
 [#15](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/15)); `prompt_id`,
@@ -195,7 +199,7 @@ CI never runs a model: the tests replace the Ollama client with simulated stream
 ```text
 .github/                  CI workflow, issue and pull request templates, CODEOWNERS, Dependabot
 benchmarks/               versioned task suites (Phase 2 grows prompts_v1.jsonl)
-configs/                  benchmark settings and model definitions (read from Phase 1)
+configs/                  benchmark settings and the model registry
 data/raw/                 run log, git-ignored
 data/processed/           derived data, git-ignored
 docs/                     requirements, architecture, roadmap, methodology, environment
@@ -229,8 +233,10 @@ is planned ([#27](https://github.com/saicharan-nidiganti/local-ai-benchmark/issu
 errors or stop midway, and replace `cli.generate` with a stub; files go to `tmp_path`.
 Coverage is measured with branches and must stay at 90% or more.
 
-**Configuration precedence (planned, #12).** Built-in defaults, then `configs/*.yaml`, then
-command-line flags; the effective values are recorded on every run.
+**Configuration precedence.** Built-in defaults, then `configs/benchmark.yaml`, then
+command-line flags given explicitly; `--config` and `--models` point at other files. Unknown
+keys and wrong types are rejected with the file and key named. The effective values are
+recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settings.md)).
 
 ## 9. Quality attributes
 
@@ -246,8 +252,6 @@ command-line flags; the effective values are recorded on every run.
 
 ## 10. Known limitations
 
-- `ask` records do not store their temperature or output limit
-  ([#12](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/12)).
 - Summaries are printed, not rebuilt from the log
   ([#13](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/13)).
 - On the reference GPU, qwen3:4b at a 4096-token context keeps about a third of its memory
@@ -262,3 +266,4 @@ command-line flags; the effective values are recorded on every run.
 | [0003](decisions/0003-append-only-jsonl-run-log.md) | An append-only JSON Lines run log |
 | [0004](decisions/0004-measurement-protocol.md) | Measurement protocol |
 | [0005](decisions/0005-packaging-and-toolchain.md) | Packaging and toolchain |
+| [0006](decisions/0006-configuration-and-pinned-settings.md) | Configuration precedence and pinned generation settings |

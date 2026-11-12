@@ -1,6 +1,10 @@
+# Settings every benchmark uses unless a command-line flag overrides them.
+# Each run records the values it actually used (see docs/architecture.md, run record).
 benchmark:
-  repeats: 5
-  warmup_runs: 1
+  repeats: 5               # measured runs
+  warmup_runs: 1           # unrecorded runs first, so the model load stays out of the data
   temperature: 0.0
-  max_output_tokens: 256
-  keep_alive: "5m"
+  max_output_tokens: 256   # sent to Ollama as num_predict
+  seed: 42                 # fixed, so sampling is repeatable
+  num_ctx: 4096            # context length in tokens; it also sets how much memory the model needs
+  keep_alive: "5m"         # how long Ollama keeps the model loaded between requests

@@ -8,6 +8,8 @@ from typing import Any
 
 import ollama
 
+from .config import GenerationSettings
+
 # A run whose reply has no visible text is a failure, even when the runtime reports tokens:
 # its throughput describes output nobody can use, so it must not enter the medians.
 EMPTY_RESPONSE = "empty_response: the model returned no visible text"
@@ -35,10 +37,9 @@ class InferenceResult:
 def generate(
     model: str,
     prompt: str,
-    temperature: float = 0.0,
-    max_output_tokens: int = 256,
-    keep_alive: str | int | None = "5m",
+    settings: GenerationSettings | None = None,
 ) -> InferenceResult:
+    settings = settings or GenerationSettings()
     start = time.perf_counter()
     first_token_at: float | None = None
     chunks: list[str] = []
@@ -52,11 +53,8 @@ def generate(
             # Thinking models such as qwen3 otherwise spend the output budget on hidden
             # reasoning: the visible reply stays empty and no first token is ever seen.
             think=False,
-            keep_alive=keep_alive,
-            options={
-                "temperature": temperature,
-                "num_predict": max_output_tokens,
-            },
+            keep_alive=settings.keep_alive,
+            options=settings.options(),
         )
 
         for chunk in stream:

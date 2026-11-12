@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from local_ai_benchmark import inference
+from local_ai_benchmark.config import GenerationSettings
 
 
 def fake_stream(chunks):
@@ -54,12 +55,29 @@ def test_passes_model_and_sampling_settings_to_ollama(monkeypatch):
 
     monkeypatch.setattr(inference.ollama, "generate", _generate)
 
-    inference.generate(model="qwen3:4b", prompt="p", temperature=0.2, max_output_tokens=64)
+    settings = GenerationSettings(temperature=0.2, max_output_tokens=64, seed=7, num_ctx=2048)
+    inference.generate(model="qwen3:4b", prompt="p", settings=settings)
 
     assert seen["model"] == "qwen3:4b"
     assert seen["prompt"] == "p"
     assert seen["stream"] is True
-    assert seen["options"] == {"temperature": 0.2, "num_predict": 64}
+    assert seen["keep_alive"] == "5m"
+    assert seen["options"] == {"temperature": 0.2, "num_predict": 64, "seed": 7, "num_ctx": 2048}
+
+
+def test_pins_seed_and_context_length_by_default(monkeypatch):
+    seen = {}
+
+    def _generate(**kwargs):
+        seen.update(kwargs)
+        yield {**FINAL_CHUNK, "response": "ok"}
+
+    monkeypatch.setattr(inference.ollama, "generate", _generate)
+
+    inference.generate(model="m", prompt="p")
+
+    assert seen["options"]["seed"] == 42
+    assert seen["options"]["num_ctx"] == 4096
 
 
 def test_disables_thinking_so_the_reply_and_first_token_are_visible(monkeypatch):
