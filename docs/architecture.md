@@ -53,7 +53,7 @@ flowchart TB
         direction TB
         cli["cli.py<br/>parses arguments,<br/>runs ask and benchmark"]
         inference["inference.py<br/>streams one generation,<br/>times it, never raises"]
-        metrics["metrics.py<br/>appends records,<br/>computes medians"]
+        metrics["metrics.py<br/>run log, run IDs,<br/>order statistics"]
         config["config.py<br/>settings and model registry,<br/>flags override files"]
         preflight["preflight.py<br/>server and model checks<br/>before any request"]
         runtimeq["runtime.py<br/>server version, model details,<br/>GPU placement"]
@@ -90,7 +90,7 @@ Solid boxes and arrows exist today; dashed ones are planned.
 | `cli.py` | Parse arguments; resolve settings; run the preflight; run `ask` (one request) and `benchmark` (warm-ups, then measured runs); print results; map failures to exit codes | `main(argv)`, `build_parser()`, `ask(args)`, `benchmark(args)` | `config`, `preflight`, `inference`, `metrics`, `paths` |
 | `inference.py` | Stream one generation from Ollama, time the first token on the client, read the runtime's durations, and turn any failure into a recorded error | `generate(model, prompt, settings) -> InferenceResult` | `ollama` client, `config` |
 | `config.py` | Load `benchmark.yaml` and `models.yaml`, validate every key and type, apply command-line overrides, resolve a model id to its Ollama tag | `load_settings(path)`, `with_overrides(settings, **flags)`, `load_models(path)`, `resolve_model(name, models)`, `GenerationSettings.options()` | PyYAML |
-| `metrics.py` | Append one record per line to the run log; summarize a list of records | `append_jsonl(path, record)`, `summarize(records)`, `utc_timestamp()` | standard library |
+| `metrics.py` | Append records to the run log and read them back; issue run IDs; group records by run; summarize a run with medians and order statistics | `append_jsonl`, `read_jsonl`, `new_run_id`, `benchmark_runs`, `select_run`, `summarize`, `run_summary`, `spread` | standard library |
 | `runtime.py` | Ask the Ollama server for its version, a model's details and digest, and where a loaded model sits (GPU or CPU); read `OLLAMA_HOST` as the Ollama client does | `host()`, `server_version()`, `model_details(name)`, `loaded_model(name)` | `ollama` client, `httpx` |
 | `preflight.py` | Before any request, confirm the server answers, the model is pulled, and the model can think if `--think` was given; otherwise fail with what to do | `check(model, think) -> Preflight`, `PreflightError` | `runtime` |
 | `paths.py` | Locate the project folder (`LOCAL_AI_BENCHMARK_HOME`, else the source checkout, else the working folder) and the default run log in it | `project_root()`, `default_run_log()` | standard library |
@@ -130,11 +130,13 @@ sequenceDiagram
         Inf-->>CLI: InferenceResult (an error is recorded, not raised)
         CLI->>Log: append one record
     end
-    CLI-->>Op: summary: runs, error rate, median latency, TTFT, tokens/s
+    CLI-->>Op: run ID and summary: error rate, p50, p90, min, max, IQR per metric
 ```
 
-`ask` is the same request once, recorded with `run_type: "single"`, without warm-up or
-summary.
+`ask` is the same request once, recorded with `run_type: "single"` and its own run ID,
+without warm-up or summary. `summarize --run-id ID` reads the log and prints exactly the
+summary the benchmark printed; without an ID it takes the latest benchmark, and `--list`
+shows them all.
 
 ### 4.2 What each timing covers
 
@@ -150,9 +152,9 @@ client sends request                          first visible token              l
   and streaming overhead, which is what a user of the model experiences.
 - **Runtime-side** (Ollama's nanosecond durations): `load_duration_ms`,
   `prompt_eval_duration_ms`, `generation_ms`, and the token counts.
-- **Throughput** is `output_tokens / generation_ms`: decode speed only. Prefill speed
-  (`prompt_tokens / prompt_eval_duration_ms`) is **planned**
-  ([#13](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/13)).
+- **Throughput** is `output_tokens / generation_ms`: decode speed. **Prefill speed** is
+  `prompt_tokens / prompt_eval_duration_ms`: how fast the prompt is read, which dominates
+  for long prompts.
 - A cold start puts the model load inside TTFT; warm-up runs exist to keep it out of the
   measured runs ([ADR-0004](decisions/0004-measurement-protocol.md)).
 
@@ -163,6 +165,7 @@ One JSON object per line in `data/raw/runs.jsonl`. Version 1, as written today:
 | Field | Type | Unit | Source | Notes |
 | --- | --- | --- | --- | --- |
 | `timestamp` | string | ISO 8601, UTC | CLI | When the record was written |
+| `run_id` | string | | CLI | Shared by every record of one invocation, for example `20261113T061512Z-3fa9c2` |
 | `run_type` | string | | CLI | `single` (ask) or `benchmark` |
 | `run_index` | integer | | CLI | 1 to N; benchmark only |
 | `model_id` | string | | registry | The id from `configs/models.yaml`, or the tag itself when the model is not registered |
@@ -183,10 +186,10 @@ One JSON object per line in `data/raw/runs.jsonl`. Version 1, as written today:
 | `load_duration_ms` | number or null | ms | Ollama `load_duration` | |
 | `prompt_tokens` | integer or null | tokens | Ollama `prompt_eval_count` | |
 | `prompt_eval_duration_ms` | number or null | ms | Ollama `prompt_eval_duration` | |
+| `prefill_tokens_per_sec` | number or null | tokens/s | derived | Null when the runtime reports no prompt time |
 | `error` | string or null | | inference | `ExceptionType: message`; null on success |
 
-**Planned fields**, added without removing any of the above: `run_id` (Phase 1,
-[#13](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/13)); a manifest
+**Planned fields**, added without removing any of the above: a manifest
 reference and resource samples (Phase 1, [#14](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/14),
 [#15](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/15)); `prompt_id`,
 `category` and `score` (Phase 2, [#21](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/21)).
@@ -255,7 +258,7 @@ recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settin
 | Attribute | How the design addresses it today | Planned |
 | --- | --- | --- |
 | Reproducibility | Fixed settings within a benchmark; warm-up exclusion; raw log kept | Seed, context length, run ID, manifest (#12, #13, #14) |
-| Measurement validity | Client TTFT plus runtime durations; medians; thinking disabled | Prefill speed, p90 and IQR (#13); resource samples (#15) |
+| Measurement validity | Client TTFT plus runtime durations; prefill and decode speed; medians with p90 and IQR; thinking disabled | Resource samples (#15) |
 | Privacy | Local runtime only; no telemetry; raw log git-ignored | Local-only host enforced (#27) |
 | Robustness | Failures recorded, never raised; an empty reply is a failure; a preflight fails fast when the server or model is missing | |
 | Testability | Offline tests with simulated streams; 96% coverage | Fakes for the sampler and manifest |
@@ -264,8 +267,6 @@ recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settin
 
 ## 10. Known limitations
 
-- Summaries are printed, not rebuilt from the log
-  ([#13](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/13)).
 - On the reference GPU, qwen3:4b at a 4096-token context keeps about a third of its memory
   on the CPU ([environment.md](environment.md#first-live-run)).
 

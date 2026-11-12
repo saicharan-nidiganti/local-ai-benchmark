@@ -23,6 +23,15 @@ For the first baseline:
 
 **Generation throughput**: generated tokens divided by runtime-reported generation duration.
 
+**Prefill throughput**: prompt tokens divided by the runtime-reported prompt-evaluation
+duration. It is reported separately because it behaves differently: it grows with the prompt,
+not the reply.
+
+**Summary statistics**: for each metric, the median (p50), p90, minimum, maximum and
+interquartile range over the successful runs of one run ID. Quantiles use the inclusive
+method, so with five runs p90 lies between the two slowest instead of beyond the data. The
+median stays the headline number; p90 and the IQR show how much a single run can be trusted.
+
 This first implementation uses Ollama's generation metadata for token counts and generation duration, while TTFT is measured around the streamed client response.
 
 ### Fixed settings

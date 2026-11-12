@@ -20,7 +20,16 @@ from .config import (
     with_overrides,
 )
 from .inference import generate
-from .metrics import append_jsonl, summarize, utc_timestamp
+from .metrics import (
+    RunLogError,
+    append_jsonl,
+    benchmark_runs,
+    new_run_id,
+    read_jsonl,
+    run_summary,
+    select_run,
+    utc_timestamp,
+)
 from .paths import default_run_log, project_root
 
 OUTPUT_HELP = "run log to append to (default: data/raw/runs.jsonl in the project folder)"
@@ -76,6 +85,7 @@ def ask(args: argparse.Namespace) -> None:
 
     record = {
         "timestamp": utc_timestamp(),
+        "run_id": new_run_id(),
         "run_type": "single",
         **run_fields(settings, model),
         **result.to_dict(),
@@ -95,6 +105,8 @@ def benchmark(args: argparse.Namespace) -> None:
         generate(model=model.name, prompt=args.prompt, settings=settings.generation)
 
     output = run_log(args)
+    run_id = new_run_id()
+    print(f"Run ID: {run_id}")
     records = []
 
     for i in range(settings.repeats):
@@ -102,6 +114,7 @@ def benchmark(args: argparse.Namespace) -> None:
         result = generate(model=model.name, prompt=args.prompt, settings=settings.generation)
         record = {
             "timestamp": utc_timestamp(),
+            "run_id": run_id,
             "run_type": "benchmark",
             "run_index": i + 1,
             **run_fields(settings, model),
@@ -111,8 +124,19 @@ def benchmark(args: argparse.Namespace) -> None:
         records.append(record)
 
     print("\n--- SUMMARY ---")
-    print(json.dumps(summarize(records), indent=2))
+    print(json.dumps(run_summary(run_id, records), indent=2))
     print(f"\nRaw results: {output}")
+    print(f"Summarize it again with: local-ai-benchmark summarize --run-id {run_id}")
+
+
+def summarize_command(args: argparse.Namespace) -> None:
+    records = read_jsonl(run_log(args))
+    if args.list:
+        for run in benchmark_runs(records):
+            print(f"{run.run_id}  {run.model}  {run.runs} runs  {run.started}")
+        return
+    run_id, selected = select_run(records, args.run_id)
+    print(json.dumps(run_summary(run_id, selected), indent=2))
 
 
 def _common_flags() -> argparse.ArgumentParser:
@@ -161,6 +185,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_bench.add_argument("--warmup-runs", type=int, help="unrecorded runs first (default: 1)")
     p_bench.set_defaults(func=benchmark)
 
+    p_sum = sub.add_parser("summarize", help="rebuild a benchmark's summary from the run log")
+    p_sum.add_argument("--run-id", help="the benchmark to summarize (default: the latest)")
+    p_sum.add_argument("--list", action="store_true", help="list the benchmarks in the log")
+    p_sum.add_argument("--output", type=Path, help="run log to read (default: as for benchmark)")
+    p_sum.set_defaults(func=summarize_command)
+
     return parser
 
 
@@ -169,7 +199,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     args = parser.parse_args(argv)
     try:
         args.func(args)
-    except ConfigError as exc:
+    except (ConfigError, RunLogError) as exc:
         parser.exit(2, f"local-ai-benchmark: error: {exc}\n")
     except preflight.PreflightError as exc:
         parser.exit(3, f"local-ai-benchmark: error: {exc}\n")

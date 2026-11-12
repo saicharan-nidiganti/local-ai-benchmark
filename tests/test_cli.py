@@ -254,3 +254,69 @@ def test_version_flag(capsys):
         cli.main(["--version"])
 
     assert __version__ in capsys.readouterr().out
+
+
+def printed_summary(text):
+    """The JSON object printed after the SUMMARY banner."""
+    body = text.split("--- SUMMARY ---", 1)[1]
+    return json.loads(body[: body.index("\n}") + 2])
+
+
+def test_a_benchmark_shares_one_run_id_and_summarize_reproduces_its_summary(
+    monkeypatch, tmp_path, capsys
+):
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["benchmark", "--model", "m", "--prompt", "p", "--repeats", "3",
+              "--warmup-runs", "0", "--output", str(output)])  # fmt: skip
+    printed = printed_summary(capsys.readouterr().out)
+
+    records = read_jsonl(output)
+    assert len({r["run_id"] for r in records}) == 1
+    assert printed["run_id"] == records[0]["run_id"]
+
+    cli.main(["summarize", "--output", str(output)])
+    assert json.loads(capsys.readouterr().out) == printed
+
+    cli.main(["summarize", "--run-id", printed["run_id"], "--output", str(output)])
+    assert json.loads(capsys.readouterr().out) == printed
+
+
+def test_summarize_lists_the_benchmarks_in_the_log(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+    output = tmp_path / "runs.jsonl"
+    for _ in range(2):
+        cli.main(["benchmark", "--model", "m", "--prompt", "p", "--repeats", "1",
+                  "--warmup-runs", "0", "--output", str(output)])  # fmt: skip
+    capsys.readouterr()
+
+    cli.main(["summarize", "--list", "--output", str(output)])
+
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert len(lines) == 2
+    assert all("  m  1 runs  " in line for line in lines)
+
+
+def test_summarize_without_a_log_or_with_an_unknown_id_exits_2(tmp_path, capsys):
+    with pytest.raises(SystemExit) as missing:
+        cli.main(["summarize", "--output", str(tmp_path / "none.jsonl")])
+    assert missing.value.code == 2
+
+    log = tmp_path / "runs.jsonl"
+    log.write_text('{"run_id": "r1", "run_type": "benchmark"}\n', encoding="utf-8")
+    with pytest.raises(SystemExit) as unknown:
+        cli.main(["summarize", "--run-id", "r9", "--output", str(log)])
+    assert unknown.value.code == 2
+    assert "no benchmark run with ID r9" in capsys.readouterr().err
+
+
+def test_ask_records_get_their_own_run_id(monkeypatch, tmp_path):
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["ask", "--model", "m", "--prompt", "p", "--output", str(output)])
+    cli.main(["ask", "--model", "m", "--prompt", "p", "--output", str(output)])
+
+    first, second = read_jsonl(output)
+    assert first["run_id"] != second["run_id"]

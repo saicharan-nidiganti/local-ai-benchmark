@@ -168,3 +168,20 @@ def test_keeps_ttft_when_stream_fails_midway(monkeypatch):
     assert result.error == "RuntimeError: stream interrupted"
     assert result.ttft_ms is not None
     assert result.output_tokens is None
+
+
+def test_prefill_speed_is_prompt_tokens_over_prompt_evaluation_time(monkeypatch):
+    monkeypatch.setattr(
+        inference.ollama, "generate", fake_stream([{**FINAL_CHUNK, "response": "ok"}])
+    )
+
+    result = inference.generate(model="m", prompt="p")
+
+    assert result.prefill_tokens_per_sec == 300  # 12 tokens in 40 ms
+
+
+def test_prefill_speed_is_none_without_a_prompt_evaluation_time(monkeypatch):
+    chunk = {**FINAL_CHUNK, "response": "ok", "prompt_eval_duration": 0}
+    monkeypatch.setattr(inference.ollama, "generate", fake_stream([chunk]))
+
+    assert inference.generate(model="m", prompt="p").prefill_tokens_per_sec is None

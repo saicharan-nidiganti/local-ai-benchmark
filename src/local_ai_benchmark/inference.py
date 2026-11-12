@@ -28,6 +28,7 @@ class InferenceResult:
     load_duration_ms: float | None
     prompt_tokens: int | None
     prompt_eval_duration_ms: float | None
+    prefill_tokens_per_sec: float | None = None
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -100,6 +101,11 @@ def generate(
             prompt_tokens=prompt_eval_count,
             prompt_eval_duration_ms=(
                 prompt_eval_duration_ns / 1_000_000 if prompt_eval_duration_ns is not None else None
+            ),
+            prefill_tokens_per_sec=(
+                prompt_eval_count / (prompt_eval_duration_ns / 1_000_000_000)
+                if prompt_eval_count is not None and prompt_eval_duration_ns
+                else None
             ),
             error=None if response.strip() else EMPTY_RESPONSE,
         )
