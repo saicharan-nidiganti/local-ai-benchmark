@@ -82,8 +82,8 @@ local-ai-benchmark benchmark --model qwen3:4b \
 ```
 
 Each measured run is appended to `data/raw/runs.jsonl`, and the command prints a summary with
-the run count, error rate, and median latency, TTFT, and throughput. `python -m app.cli` works
-in place of `local-ai-benchmark`.
+the run count, error rate, and median latency, TTFT, and throughput. `python -m local_ai_benchmark`
+works in place of `local-ai-benchmark`.
 
 ## Reproducibility
 
@@ -122,7 +122,7 @@ each run. CI runs it, plus a check that the installed CLI starts, on Python 3.11
 ## Project layout
 
 ```text
-app/          cli.py (commands), inference.py (Ollama client and timing), metrics.py (summaries)
+src/local_ai_benchmark/   cli.py (commands), inference.py (Ollama client and timing), metrics.py (summaries)
 benchmarks/   versioned prompt suites
 configs/      benchmark settings and model definitions
 docs/         methodology

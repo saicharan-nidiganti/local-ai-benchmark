@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app import inference
+from local_ai_benchmark import inference
 
 
 def fake_stream(chunks):

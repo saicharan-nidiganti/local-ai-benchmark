@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 
-from app import cli
-from app.inference import InferenceResult
+from local_ai_benchmark import cli
+from local_ai_benchmark.inference import InferenceResult
 
 
 def stub_result(model, prompt, **_settings):

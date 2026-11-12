@@ -1,4 +1,4 @@
-from app.metrics import summarize
+from local_ai_benchmark.metrics import summarize
 
 
 def test_summarize_successful_runs():
