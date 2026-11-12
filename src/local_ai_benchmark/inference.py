@@ -50,9 +50,9 @@ def generate(
             model=model,
             prompt=prompt,
             stream=True,
-            # Thinking models such as qwen3 otherwise spend the output budget on hidden
-            # reasoning: the visible reply stays empty and no first token is ever seen.
-            think=False,
+            # Off unless asked for: thinking models such as qwen3 otherwise spend the output
+            # budget on hidden reasoning, and no visible first token is ever seen.
+            think=settings.think,
             keep_alive=settings.keep_alive,
             options=settings.options(),
         )

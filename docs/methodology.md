@@ -44,5 +44,8 @@ runtime's token counts, because they show where the output budget went.
 Models such as qwen3 can reason before they answer, and Ollama returns that reasoning
 separately from the reply. With thinking enabled, a short output limit can be spent
 entirely on reasoning: the reply is empty and no first token is ever observed, so TTFT is
-missing. The harness therefore disables thinking (`think=False`) on every request, which
-keeps TTFT and throughput comparable across thinking and non-thinking models.
+missing. The harness therefore disables thinking by default (`think: false` in
+`configs/benchmark.yaml`), which keeps TTFT and throughput comparable across thinking and
+non-thinking models. `--think` switches it on for a separate measurement, and every run
+records the setting. On a model that cannot think, the default is harmless: see
+[environment.md](environment.md#thinking-off-on-a-non-thinking-model).

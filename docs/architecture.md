@@ -161,6 +161,7 @@ One JSON object per line in `data/raw/runs.jsonl`. Version 1, as written today:
 | `seed` | integer | | settings | Sampling seed, pinned |
 | `num_ctx` | integer | tokens | settings | Context length, pinned; it also sets the model's memory footprint |
 | `keep_alive` | string | duration | settings | How long Ollama keeps the model loaded |
+| `think` | boolean | | settings | Whether a thinking model may reason before answering; off by default |
 | `model` | string | | request | Ollama model tag, for example `qwen3:4b` |
 | `prompt` | string | | request | Full prompt text |
 | `response` | string | | stream | Concatenated visible reply |
@@ -174,8 +175,7 @@ One JSON object per line in `data/raw/runs.jsonl`. Version 1, as written today:
 | `prompt_eval_duration_ms` | number or null | ms | Ollama `prompt_eval_duration` | |
 | `error` | string or null | | inference | `ExceptionType: message`; null on success |
 
-**Planned fields**, added without removing any of the above: `run_id` and `think` (Phase 1,
-[#11](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/11),
+**Planned fields**, added without removing any of the above: `run_id` (Phase 1,
 [#13](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/13)); a manifest
 reference and resource samples (Phase 1, [#14](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/14),
 [#15](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/15)); `prompt_id`,

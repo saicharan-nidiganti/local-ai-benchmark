@@ -31,6 +31,10 @@ writes them automatically into an environment manifest
 | Tag | Digest | Format | Parameters | Quantization | Size on disk |
 | --- | --- | --- | --- | --- | --- |
 | `qwen3:4b` | `359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7` | GGUF | 4.0B | Q4_K_M | 2.5 GB |
+| `llama3.2:3b` | `a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72` | GGUF | 3.2B | Q4_K_M | 2.0 GB |
+
+Capabilities as Ollama reports them: qwen3:4b `completion, tools, thinking`; llama3.2:3b
+`completion, tools`.
 
 The three models for the comparison are chosen in
 [#23](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/23).
@@ -50,6 +54,24 @@ At a 4096-token context, qwen3:4b does not fully fit in 4 GB of VRAM: Ollama kee
 third of it on the CPU. GPU offload is therefore recorded with every run from Phase 1
 ([#15](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/15)) and is a
 criterion for choosing models ([#23](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/23)).
+
+## Thinking off on a non-thinking model
+
+One `ask` request to llama3.2:3b on 2026-11-13 with the default `think: false`, to check that
+the setting is harmless on a model that cannot think
+([#11](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/11)). Cold start, default
+settings.
+
+| Metric | Value |
+| --- | --- |
+| Result | No error; a 1,342-character reply |
+| TTFT | 3.6 s, of which model load 3.5 s |
+| Decode throughput | 57.8 tokens/s over 256 tokens |
+| Memory placement | 2.35 GB of 2.94 GB on the GPU (about 80%), 4096-token context |
+
+Even this 3B model does not fully fit in the 4 GB of VRAM at a 4096-token context, which
+makes the context length a variable worth measuring in the comparison
+([#23](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/23)).
 
 ## Recording your own environment
 

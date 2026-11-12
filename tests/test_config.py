@@ -72,7 +72,8 @@ def test_rejects_an_unknown_setting(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "line", ["repeats: five", "temperature: true", "seed: 1.5", "num_ctx: -1", "keep_alive: 5"]
+    "line",
+    ["repeats: five", "temperature: true", "seed: 1.5", "num_ctx: -1", "keep_alive: 5", "think: 1"],
 )
 def test_rejects_a_mistyped_or_negative_setting(tmp_path, line):
     with pytest.raises(ConfigError):
@@ -86,6 +87,13 @@ def test_reports_a_missing_or_malformed_file(tmp_path):
         load_settings(write(tmp_path, "benchmark: [unclosed\n"))
     with pytest.raises(ConfigError, match="mapping"):
         load_settings(write(tmp_path, "- a list\n"))
+
+
+def test_thinking_can_be_switched_on_in_the_file(tmp_path):
+    settings = load_settings(write(tmp_path, "benchmark:\n  think: true\n"))
+
+    assert settings.generation.think is True
+    assert settings.generation.options().keys() == {"temperature", "num_predict", "seed", "num_ctx"}
 
 
 def test_an_empty_file_gives_the_defaults(tmp_path):
@@ -110,6 +118,7 @@ def test_the_record_lists_every_generation_setting():
         "seed": 42,
         "num_ctx": 4096,
         "keep_alive": "5m",
+        "think": False,
     }
 
 

@@ -96,6 +96,20 @@ def test_disables_thinking_so_the_reply_and_first_token_are_visible(monkeypatch)
     assert result.ttft_ms is not None
 
 
+def test_thinking_is_sent_when_switched_on(monkeypatch):
+    seen = {}
+
+    def _generate(**kwargs):
+        seen.update(kwargs)
+        yield {**FINAL_CHUNK, "response": "ok"}
+
+    monkeypatch.setattr(inference.ollama, "generate", _generate)
+
+    inference.generate(model="qwen3:4b", prompt="p", settings=GenerationSettings(think=True))
+
+    assert seen["think"] is True
+
+
 def test_throughput_is_none_when_runtime_reports_no_generation_time(monkeypatch):
     chunks = [{"response": "x", "done": True, "eval_count": 5, "eval_duration": 0}]
     monkeypatch.setattr(inference.ollama, "generate", fake_stream(chunks))

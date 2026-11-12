@@ -26,6 +26,9 @@ class GenerationSettings:
     seed: int = 42
     num_ctx: int = 4096
     keep_alive: str = "5m"
+    # Off by default: with it on, a thinking model can spend the whole output budget on hidden
+    # reasoning, leaving no visible reply and no first token to time (ADR-0004).
+    think: bool = False
 
     def options(self) -> dict[str, Any]:
         """The `options` mapping of an Ollama request."""
@@ -64,6 +67,7 @@ _GENERATION_TYPES: dict[str, type] = {
     "seed": int,
     "num_ctx": int,
     "keep_alive": str,
+    "think": bool,
 }
 _RUN_TYPES: dict[str, type] = {"repeats": int, "warmup_runs": int}
 
@@ -83,6 +87,10 @@ def _read_yaml(path: Path) -> dict[str, Any]:
 
 
 def _checked(path: Path, key: str, value: Any, expected: type) -> Any:
+    if expected is bool:
+        if not isinstance(value, bool):
+            raise ConfigError(f"{path}: '{key}' must be true or false, got {type(value).__name__}")
+        return value
     # bool is a subclass of int; a YAML `true` is never a valid count or temperature.
     if isinstance(value, bool) or not isinstance(value, expected):
         if expected is float and isinstance(value, int) and not isinstance(value, bool):
