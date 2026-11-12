@@ -12,6 +12,12 @@ All notable changes to this project are recorded here. The format follows
   CI on Python 3.11 to 3.14 ([#3](https://github.com/saicharan-nidiganti/local-ai-benchmark/pull/3)).
 - `local-ai-benchmark` console script ([#3](https://github.com/saicharan-nidiganti/local-ai-benchmark/pull/3)).
 
+### Changed
+
+- The package moved to a src layout and is now named `local_ai_benchmark`
+  (`python -m local_ai_benchmark`); it builds with hatchling. The empty `runners/` package is
+  gone ([#5](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/5)).
+
 ### Fixed
 
 - The editable install failed because setuptools found several top-level packages
