@@ -42,3 +42,7 @@ All notable changes to this project are recorded here. The format follows
 - A reply with no visible text was counted as a successful run, so its throughput entered
   the medians; it is now a failure, `empty_response`, with the runtime's counts kept
   ([#9](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/9)).
+- The default run log was relative to the working folder, so running from another folder
+  wrote a second `runs.jsonl` elsewhere. It now resolves to `data/raw/` in the project folder
+  (or the folder named by `LOCAL_AI_BENCHMARK_HOME`)
+  ([#16](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/16)).
