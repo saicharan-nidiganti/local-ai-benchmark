@@ -55,7 +55,8 @@ flowchart TB
         inference["inference.py<br/>streams one generation,<br/>times it, never raises"]
         metrics["metrics.py<br/>appends records,<br/>computes medians"]
         config["config.py<br/>settings and model registry,<br/>flags override files"]
-        preflight["preflight.py<br/>server and model checks<br/>Phase 1 · #10"]:::planned
+        preflight["preflight.py<br/>server and model checks<br/>before any request"]
+        runtimeq["runtime.py<br/>server version, model details,<br/>GPU placement"]
         manifest["manifest.py<br/>environment manifest<br/>Phase 1 · #14"]:::planned
         sampler["sampler.py<br/>RAM, VRAM, power<br/>Phase 1 · #15"]:::planned
         suite["suite.py, scorers.py<br/>tasks and scoring<br/>Phase 2 · #19-#21"]:::planned
@@ -68,8 +69,10 @@ flowchart TB
     cli --> metrics
     inference --> ollama
     metrics --> log
-    cli -.-> config
-    cli -.-> preflight
+    cli --> config
+    cli --> preflight
+    preflight --> runtimeq
+    runtimeq --> ollama
     cli -.-> suite
     cli -.-> report
     inference -.-> sampler
@@ -84,14 +87,16 @@ Solid boxes and arrows exist today; dashed ones are planned.
 
 | Module | Responsibility | Public interface | Depends on |
 | --- | --- | --- | --- |
-| `cli.py` | Parse arguments; run `ask` (one request) and `benchmark` (warm-ups, then measured runs); print results | `main()`, `build_parser()`, `ask(args)`, `benchmark(args)` | `inference`, `metrics` |
+| `cli.py` | Parse arguments; resolve settings; run the preflight; run `ask` (one request) and `benchmark` (warm-ups, then measured runs); print results; map failures to exit codes | `main(argv)`, `build_parser()`, `ask(args)`, `benchmark(args)` | `config`, `preflight`, `inference`, `metrics`, `paths` |
 | `inference.py` | Stream one generation from Ollama, time the first token on the client, read the runtime's durations, and turn any failure into a recorded error | `generate(model, prompt, settings) -> InferenceResult` | `ollama` client, `config` |
 | `config.py` | Load `benchmark.yaml` and `models.yaml`, validate every key and type, apply command-line overrides, resolve a model id to its Ollama tag | `load_settings(path)`, `with_overrides(settings, **flags)`, `load_models(path)`, `resolve_model(name, models)`, `GenerationSettings.options()` | PyYAML |
 | `metrics.py` | Append one record per line to the run log; summarize a list of records | `append_jsonl(path, record)`, `summarize(records)`, `utc_timestamp()` | standard library |
+| `runtime.py` | Ask the Ollama server for its version, a model's details and digest, and where a loaded model sits (GPU or CPU); read `OLLAMA_HOST` as the Ollama client does | `host()`, `server_version()`, `model_details(name)`, `loaded_model(name)` | `ollama` client, `httpx` |
+| `preflight.py` | Before any request, confirm the server answers, the model is pulled, and the model can think if `--think` was given; otherwise fail with what to do | `check(model, think) -> Preflight`, `PreflightError` | `runtime` |
 | `paths.py` | Locate the project folder (`LOCAL_AI_BENCHMARK_HOME`, else the source checkout, else the working folder) and the default run log in it | `project_root()`, `default_run_log()` | standard library |
 
-Dependency rules: `inference` and `metrics` never import `cli`; only `inference` talks to
-Ollama; only `metrics` writes the run log. Planned modules keep the same direction: the CLI
+Dependency rules: no module imports `cli`; only `inference` (generation) and `runtime`
+(everything else) talk to Ollama; only `metrics` writes the run log. Planned modules keep the same direction: the CLI
 composes, the lower modules do one job each.
 
 ## 4. Runtime view
@@ -106,6 +111,11 @@ sequenceDiagram
     participant Oll as Ollama server
     participant Log as runs.jsonl
     Op->>CLI: benchmark --model M --prompt P --repeats N --warmup-runs W
+    CLI->>Oll: preflight: GET /api/version, then show M
+    alt server down, or M not pulled
+        Oll-->>CLI: error
+        CLI-->>Op: what to do (exit code 3), before any request
+    end
     loop W warm-up runs, never recorded
         CLI->>Inf: generate(M, P, settings)
         Inf->>Oll: POST /api/generate (stream, think=false)
@@ -218,7 +228,9 @@ pyproject.toml, uv.lock   package metadata, tool settings, locked dependencies
 **Error handling.** `generate()` catches every exception and returns an `InferenceResult`
 with `error` set, keeping a TTFT if text had already arrived. A benchmark therefore always
 completes and reports its error rate (NFR-4). A reply with no visible text is a failure too
-(`empty_response`), with the runtime's token counts kept for diagnosis.
+(`empty_response`), with the runtime's token counts kept for diagnosis. Problems that would
+make every run fail are caught before the first one: the preflight checks the server and the
+model. Exit codes: 0 success, 2 configuration error, 3 runtime or model unavailable.
 
 **Reproducibility.** Today: warm-up exclusion, temperature and output limit recorded on
 benchmark runs, thinking disabled, every observation kept. Planned in Phase 1: pinned `seed`
@@ -245,7 +257,7 @@ recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settin
 | Reproducibility | Fixed settings within a benchmark; warm-up exclusion; raw log kept | Seed, context length, run ID, manifest (#12, #13, #14) |
 | Measurement validity | Client TTFT plus runtime durations; medians; thinking disabled | Prefill speed, p90 and IQR (#13); resource samples (#15) |
 | Privacy | Local runtime only; no telemetry; raw log git-ignored | Local-only host enforced (#27) |
-| Robustness | Failures recorded, never raised; an empty reply is a failure | Preflight (#10) |
+| Robustness | Failures recorded, never raised; an empty reply is a failure; a preflight fails fast when the server or model is missing | |
 | Testability | Offline tests with simulated streams; 96% coverage | Fakes for the sampler and manifest |
 | Maintainability | src layout, strict typing, Ruff, locked dependencies, ADRs | Protected `main` (#8) |
 | Portability | Windows and Linux in CI | |

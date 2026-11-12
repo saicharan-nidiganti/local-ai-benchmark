@@ -32,6 +32,10 @@ All notable changes to this project are recorded here. The format follows
 - `--think` / `--no-think` (and `think:` in the settings file) to let a thinking model reason
   before it answers; off by default and recorded on every run
   ([#11](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/11)).
+- A preflight before any request: when Ollama is unreachable, the model is not pulled, or
+  `--think` is given for a model that cannot think, the command fails within a second with
+  what to do and exit code 3, instead of failing every run
+  ([#10](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/10)).
 
 ### Changed
 
