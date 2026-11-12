@@ -29,7 +29,7 @@ controls for each of these:
 - **Raw data is kept.** Every observation is appended to JSONL; nothing is overwritten or
   pre-aggregated.
 - **Summaries are robust.** Results are reported as medians, which a single slow run cannot
-  skew.
+  skew, with p90 and the interquartile range beside them.
 - **Failures are counted, not hidden.** A failed run is recorded with its error and
   contributes to the error rate.
 
@@ -41,6 +41,7 @@ controls for each of these:
 | Total latency | Wall-clock time from the request until generation completes |
 | Output tokens | Token count reported by the Ollama runtime |
 | Throughput | Output tokens divided by the runtime-reported generation time, in tokens per second |
+| Prefill speed | Prompt tokens divided by the runtime-reported prompt-evaluation time |
 | Load and prompt time | Model load and prompt-processing durations reported by Ollama |
 | Error rate | Failed runs divided by all runs in the benchmark |
 
@@ -93,6 +94,13 @@ seed, context length, repeats); flags override them, and every run records the v
 Each measured run is appended to `data/raw/runs.jsonl`, and the command prints a summary with
 the run count, error rate, and median latency, TTFT and throughput.
 `python -m local_ai_benchmark` works in place of `local-ai-benchmark`.
+
+Every benchmark gets a run ID. Rebuild its summary from the log at any time:
+
+```bash
+uv run local-ai-benchmark summarize --list              # benchmarks in the log
+uv run local-ai-benchmark summarize --run-id <run ID>   # default: the latest
+```
 
 ## Reproducibility
 

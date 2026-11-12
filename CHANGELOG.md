@@ -36,6 +36,10 @@ All notable changes to this project are recorded here. The format follows
   `--think` is given for a model that cannot think, the command fails within a second with
   what to do and exit code 3, instead of failing every run
   ([#10](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/10)).
+- A `run_id` on every record, and a `summarize` command that rebuilds a benchmark's summary
+  from the log (`--run-id`, default the latest; `--list`). Summaries add p50, p90, min, max
+  and IQR per metric, and prefill speed beside decode speed
+  ([#13](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/13)).
 
 ### Changed
 
