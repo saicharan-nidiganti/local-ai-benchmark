@@ -1,0 +1,265 @@
+# Architecture
+
+Last updated: 2026-11-13 · Applies to: `main` after Phase 0
+
+This document describes how local-ai-benchmark is built today and how it grows through the
+[roadmap](roadmap.md). Parts that do not exist yet are marked **planned**, with the phase and
+issue that add them; their module names are provisional. Requirement IDs (FR-*, NFR-*) refer
+to [requirements.md](requirements.md); decisions are recorded in [decisions/](decisions/).
+
+## 1. Context
+
+One person runs the harness on one machine. The harness talks to one local service, the
+Ollama server, and to the file system. Nothing leaves the machine (FR-9).
+
+```mermaid
+flowchart LR
+    operator(["Operator<br/>runs benchmarks,<br/>reads reports"])
+    subgraph machine["Reference machine: Windows 11, RTX 3050 4 GB, 16 GB RAM"]
+        harness["local-ai-benchmark<br/>Python CLI"]
+        ollama[("Ollama server<br/>localhost:11434<br/>GGUF models, llama.cpp runner")]
+        gpu{{"GPU and CPU"}}
+        files[("File system<br/>configs, suites,<br/>run log, reports")]
+    end
+    operator -- "commands" --> harness
+    harness -- "HTTP, streamed JSON" --> ollama
+    ollama --> gpu
+    harness -- "read configs and suites,<br/>append runs, write reports" --> files
+```
+
+| Element | Responsibility | Owned by |
+| --- | --- | --- |
+| Operator | Chooses models and settings, runs benchmarks, reads results | Person |
+| local-ai-benchmark | Sends requests, measures them, records every run, summarizes and reports | This repository |
+| Ollama server | Loads quantized models, splits layers between GPU and CPU, generates tokens, reports durations | [Ollama](https://ollama.com), [ADR-0002](decisions/0002-ollama-as-the-local-runtime.md) |
+| File system | Holds inputs (configs, suites) and outputs (run log, reports) | This repository's folders |
+
+## 2. Containers
+
+| Container | Technology | Lifetime | Notes |
+| --- | --- | --- | --- |
+| CLI process | Python 3.11+, `local-ai-benchmark` console script | One per command | Stateless between commands; all state is in files |
+| Ollama server | Ollama 0.40 (reference), HTTP on `localhost:11434` | Long-running service | Keeps a model loaded for `keep_alive` (5 minutes by default here) |
+| Run log | JSON Lines, `data/raw/runs.jsonl` | Append-only, git-ignored | [ADR-0003](decisions/0003-append-only-jsonl-run-log.md) |
+| Configuration | YAML, `configs/` | Versioned in git | Not read yet: **planned**, Phase 1 ([#12](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/12)) |
+| Task suites | JSON Lines, `benchmarks/` | Versioned in git | Not read yet: **planned**, Phase 2 ([#19](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/19)) |
+| Reports | Markdown and figures, `reports/` | Curated output committed | **Planned**, Phase 3 ([#25](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/25)) |
+
+## 3. Components
+
+```mermaid
+flowchart TB
+    subgraph pkg["Package: src/local_ai_benchmark"]
+        direction TB
+        cli["cli.py<br/>parses arguments,<br/>runs ask and benchmark"]
+        inference["inference.py<br/>streams one generation,<br/>times it, never raises"]
+        metrics["metrics.py<br/>appends records,<br/>computes medians"]
+        config["config.py<br/>YAML settings<br/>Phase 1 · #12"]:::planned
+        preflight["preflight.py<br/>server and model checks<br/>Phase 1 · #10"]:::planned
+        manifest["manifest.py<br/>environment manifest<br/>Phase 1 · #14"]:::planned
+        sampler["sampler.py<br/>RAM, VRAM, power<br/>Phase 1 · #15"]:::planned
+        suite["suite.py, scorers.py<br/>tasks and scoring<br/>Phase 2 · #19-#21"]:::planned
+        report["report.py<br/>comparison report<br/>Phase 3 · #25"]:::planned
+        app["app.py<br/>offline application<br/>Phase 5 · #31"]:::planned
+    end
+    ollama[("Ollama server")]
+    log[("runs.jsonl")]
+    cli --> inference
+    cli --> metrics
+    inference --> ollama
+    metrics --> log
+    cli -.-> config
+    cli -.-> preflight
+    cli -.-> suite
+    cli -.-> report
+    inference -.-> sampler
+    cli -.-> manifest
+    suite -.-> inference
+    report -.-> log
+    app -.-> inference
+    classDef planned stroke-dasharray: 5 3
+```
+
+Solid boxes and arrows exist today; dashed ones are planned.
+
+| Module | Responsibility | Public interface | Depends on |
+| --- | --- | --- | --- |
+| `cli.py` | Parse arguments; run `ask` (one request) and `benchmark` (warm-ups, then measured runs); print results | `main()`, `build_parser()`, `ask(args)`, `benchmark(args)` | `inference`, `metrics` |
+| `inference.py` | Stream one generation from Ollama, time the first token on the client, read the runtime's durations, and turn any failure into a recorded error | `generate(model, prompt, temperature, max_output_tokens, keep_alive) -> InferenceResult` | `ollama` client |
+| `metrics.py` | Append one record per line to the run log; summarize a list of records | `append_jsonl(path, record)`, `summarize(records)`, `utc_timestamp()` | standard library |
+
+Dependency rules: `inference` and `metrics` never import `cli`; only `inference` talks to
+Ollama; only `metrics` writes the run log. Planned modules keep the same direction: the CLI
+composes, the lower modules do one job each.
+
+## 4. Runtime view
+
+### 4.1 A benchmark command
+
+```mermaid
+sequenceDiagram
+    actor Op as Operator
+    participant CLI as cli.benchmark
+    participant Inf as inference.generate
+    participant Oll as Ollama server
+    participant Log as runs.jsonl
+    Op->>CLI: benchmark --model M --prompt P --repeats N --warmup-runs W
+    loop W warm-up runs, never recorded
+        CLI->>Inf: generate(M, P, settings)
+        Inf->>Oll: POST /api/generate (stream, think=false)
+        Oll-->>Inf: streamed chunks, final chunk with durations
+        Inf-->>CLI: result, discarded
+    end
+    loop N measured runs
+        CLI->>Inf: generate(M, P, settings)
+        Inf->>Oll: POST /api/generate (stream, think=false)
+        Oll-->>Inf: first chunk with text: client stops the TTFT clock
+        Oll-->>Inf: remaining chunks, final chunk with counts and durations
+        Inf-->>CLI: InferenceResult (an error is recorded, not raised)
+        CLI->>Log: append one record
+    end
+    CLI-->>Op: summary: runs, error rate, median latency, TTFT, tokens/s
+```
+
+`ask` is the same request once, recorded with `run_type: "single"`, without warm-up or
+summary.
+
+### 4.2 What each timing covers
+
+```text
+client sends request                          first visible token              last token
+      |-- model load --|-- prompt evaluation --|-- decode ---------------------------|
+      |<----------------- ttft_ms (client clock) ------>|
+      |<------------------------------ total_latency_ms (client clock) ------------->|
+       load_duration_ms   prompt_eval_duration_ms       generation_ms (Ollama's eval_duration)
+```
+
+- **Client-side** (`time.perf_counter`): `ttft_ms` and `total_latency_ms`. They include HTTP
+  and streaming overhead, which is what a user of the model experiences.
+- **Runtime-side** (Ollama's nanosecond durations): `load_duration_ms`,
+  `prompt_eval_duration_ms`, `generation_ms`, and the token counts.
+- **Throughput** is `output_tokens / generation_ms`: decode speed only. Prefill speed
+  (`prompt_tokens / prompt_eval_duration_ms`) is **planned**
+  ([#13](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/13)).
+- A cold start puts the model load inside TTFT; warm-up runs exist to keep it out of the
+  measured runs ([ADR-0004](decisions/0004-measurement-protocol.md)).
+
+## 5. Data model: the run record
+
+One JSON object per line in `data/raw/runs.jsonl`. Version 1, as written today:
+
+| Field | Type | Unit | Source | Notes |
+| --- | --- | --- | --- | --- |
+| `timestamp` | string | ISO 8601, UTC | CLI | When the record was written |
+| `run_type` | string | | CLI | `single` (ask) or `benchmark` |
+| `run_index` | integer | | CLI | 1 to N; benchmark only |
+| `temperature` | number | | CLI | Benchmark only |
+| `max_output_tokens` | integer | tokens | CLI | Benchmark only; sent as Ollama's `num_predict` |
+| `model` | string | | request | Ollama model tag, for example `qwen3:4b` |
+| `prompt` | string | | request | Full prompt text |
+| `response` | string | | stream | Concatenated visible reply |
+| `ttft_ms` | number or null | ms | client | Null when no text arrived |
+| `total_latency_ms` | number | ms | client | Always present, also on failure |
+| `output_tokens` | integer or null | tokens | Ollama `eval_count` | |
+| `generation_ms` | number or null | ms | Ollama `eval_duration` | |
+| `tokens_per_sec` | number or null | tokens/s | derived | Null when the runtime reports no generation time |
+| `load_duration_ms` | number or null | ms | Ollama `load_duration` | |
+| `prompt_tokens` | integer or null | tokens | Ollama `prompt_eval_count` | |
+| `prompt_eval_duration_ms` | number or null | ms | Ollama `prompt_eval_duration` | |
+| `error` | string or null | | inference | `ExceptionType: message`; null on success |
+
+**Planned fields**, added without removing any of the above: `run_id`, `seed`, `num_ctx`,
+`think` and `keep_alive` (Phase 1, [#11](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/11),
+[#12](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/12),
+[#13](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/13)); a manifest
+reference and resource samples (Phase 1, [#14](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/14),
+[#15](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/15)); `prompt_id`,
+`category` and `score` (Phase 2, [#21](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/21)).
+
+## 6. Deployment view
+
+| Layer | Reference value | Recorded in |
+| --- | --- | --- |
+| Hardware | ASUS ROG Strix G513QC: AMD Ryzen 9 5900HX, NVIDIA RTX 3050 Laptop GPU 4 GB, 15.4 GB RAM | [environment.md](environment.md) |
+| Operating system | Windows 11 | [environment.md](environment.md) |
+| Runtime | Ollama 0.40.16, llama.cpp runner, `localhost:11434` | [environment.md](environment.md) |
+| Harness | Python 3.11 to 3.14, installed from `uv.lock` | `pyproject.toml`, `uv.lock` |
+| CI | GitHub Actions: Ubuntu (Python 3.11 to 3.14) and Windows (3.14); no model, no GPU | `.github/workflows/ci.yml` |
+
+CI never runs a model: the tests replace the Ollama client with simulated streams
+(NFR-2). Live measurements happen only on the reference machine.
+
+## 7. Repository layout
+
+```text
+.github/                  CI workflow, issue and pull request templates, CODEOWNERS, Dependabot
+benchmarks/               versioned task suites (Phase 2 grows prompts_v1.jsonl)
+configs/                  benchmark settings and model definitions (read from Phase 1)
+data/raw/                 run log, git-ignored
+data/processed/           derived data, git-ignored
+docs/                     requirements, architecture, roadmap, methodology, environment
+docs/decisions/           architecture decision records
+reports/                  curated reports and figures (Phase 3)
+src/local_ai_benchmark/   the package: cli, inference, metrics
+tests/                    offline test suite
+CHANGELOG.md              changes per release, Keep a Changelog format
+CONTRIBUTING.md           setup, workflow, definition of done
+Makefile                  the commands CI runs
+pyproject.toml, uv.lock   package metadata, tool settings, locked dependencies
+```
+
+## 8. Cross-cutting concerns
+
+**Error handling.** `generate()` catches every exception and returns an `InferenceResult`
+with `error` set, keeping a TTFT if text had already arrived. A benchmark therefore always
+completes and reports its error rate (NFR-4). Known gap: an empty reply counts as a success
+until [#9](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/9).
+
+**Reproducibility.** Today: warm-up exclusion, temperature and output limit recorded on
+benchmark runs, thinking disabled, every observation kept. Planned in Phase 1: pinned `seed`
+and `num_ctx`, a `run_id`, and an environment manifest (FR-4).
+
+**Privacy.** The harness sends requests only to the Ollama host and sends no telemetry. The
+run log holds full prompts and replies, so it stays git-ignored. Enforcing a local-only host
+is planned ([#27](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/27)). See
+[SECURITY.md](../SECURITY.md).
+
+**Testing.** Unit tests replace `ollama.generate` with generators that yield chunks, raise
+errors or stop midway, and replace `cli.generate` with a stub; files go to `tmp_path`.
+Coverage is measured with branches and must stay at 90% or more.
+
+**Configuration precedence (planned, #12).** Built-in defaults, then `configs/*.yaml`, then
+command-line flags; the effective values are recorded on every run.
+
+## 9. Quality attributes
+
+| Attribute | How the design addresses it today | Planned |
+| --- | --- | --- |
+| Reproducibility | Fixed settings within a benchmark; warm-up exclusion; raw log kept | Seed, context length, run ID, manifest (#12, #13, #14) |
+| Measurement validity | Client TTFT plus runtime durations; medians; thinking disabled | Prefill speed, p90 and IQR (#13); resource samples (#15) |
+| Privacy | Local runtime only; no telemetry; raw log git-ignored | Local-only host enforced (#27) |
+| Robustness | Failures recorded, never raised | Empty reply as failure (#9); preflight (#10) |
+| Testability | Offline tests with simulated streams; 96% coverage | Fakes for the sampler and manifest |
+| Maintainability | src layout, strict typing, Ruff, locked dependencies, ADRs | Protected `main` (#8) |
+| Portability | Windows and Linux in CI | |
+
+## 10. Known limitations
+
+- `ask` records do not store their temperature or output limit
+  ([#12](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/12)).
+- The default output path is relative to the working folder
+  ([#16](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/16)).
+- Summaries are printed, not rebuilt from the log
+  ([#13](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/13)).
+- On the reference GPU, qwen3:4b at a 4096-token context keeps about a third of its memory
+  on the CPU ([environment.md](environment.md#first-live-run)).
+
+## 11. Decisions
+
+| ADR | Decision |
+| --- | --- |
+| [0001](decisions/0001-record-architecture-decisions.md) | Record architecture decisions |
+| [0002](decisions/0002-ollama-as-the-local-runtime.md) | Ollama as the local inference runtime |
+| [0003](decisions/0003-append-only-jsonl-run-log.md) | An append-only JSON Lines run log |
+| [0004](decisions/0004-measurement-protocol.md) | Measurement protocol |
+| [0005](decisions/0005-packaging-and-toolchain.md) | Packaging and toolchain |

@@ -16,6 +16,12 @@ All notable changes to this project are recorded here. The format follows
   calls. CI now runs lint and types, tests on Python 3.11 to 3.14 and on Windows, and a
   package check that installs the built wheel alone
   ([#6](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/6)).
+- Documentation set: requirements with IDs traced to milestones, a detailed architecture
+  (context, components, runtime sequence, run-record schema, deployment), the reference
+  environment with Ollama version and model digest, the roadmap, ADR-0001 to ADR-0005,
+  `CONTRIBUTING.md` and `SECURITY.md`
+  ([#7](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/7),
+  [#2](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/2)).
 
 ### Changed
 
