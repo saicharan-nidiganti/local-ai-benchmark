@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from . import __version__, preflight
+from . import __version__, manifest, preflight
 from .config import (
     BenchmarkSettings,
     ConfigError,
@@ -73,9 +73,16 @@ def check_runtime(settings: BenchmarkSettings, model: ModelEntry) -> preflight.P
     return checked
 
 
+def write_manifest(output: Path, run_id: str, checked: preflight.Preflight) -> Path:
+    """One manifest per run ID, beside the run log."""
+    path = manifest.manifest_log(output)
+    append_jsonl(path, manifest.collect(run_id, checked.server_version, checked.model))
+    return path
+
+
 def ask(args: argparse.Namespace) -> None:
     settings, model = resolve(args)
-    check_runtime(settings, model)
+    checked = check_runtime(settings, model)
     result = generate(model=model.name, prompt=args.prompt, settings=settings.generation)
 
     print("\n--- RESPONSE ---")
@@ -83,21 +90,23 @@ def ask(args: argparse.Namespace) -> None:
     print("\n--- METRICS ---")
     print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
 
+    run_id = new_run_id()
     record = {
         "timestamp": utc_timestamp(),
-        "run_id": new_run_id(),
+        "run_id": run_id,
         "run_type": "single",
         **run_fields(settings, model),
         **result.to_dict(),
     }
     output = run_log(args)
     append_jsonl(output, record)
+    write_manifest(output, run_id, checked)
     print(f"\nSaved: {output}")
 
 
 def benchmark(args: argparse.Namespace) -> None:
     settings, model = resolve(args)
-    check_runtime(settings, model)
+    checked = check_runtime(settings, model)
 
     # Warm-up runs are deliberately not included in the measured dataset.
     for i in range(settings.warmup_runs):
@@ -107,6 +116,7 @@ def benchmark(args: argparse.Namespace) -> None:
     output = run_log(args)
     run_id = new_run_id()
     print(f"Run ID: {run_id}")
+    print(f"Manifest: {write_manifest(output, run_id, checked)}")
     records = []
 
     for i in range(settings.repeats):

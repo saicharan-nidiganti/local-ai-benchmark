@@ -21,6 +21,16 @@ MODEL_DETAILS = runtime.ModelDetails(
 
 
 @pytest.fixture(autouse=True)
+def fixed_manifest(monkeypatch):
+    """Skip the real system queries; manifest.py has its own tests."""
+    monkeypatch.setattr(
+        cli.manifest,
+        "collect",
+        lambda run_id, server_version, model: {"run_id": run_id, "runtime": server_version},
+    )
+
+
+@pytest.fixture(autouse=True)
 def server_is_up(monkeypatch):
     """Pretend the Ollama server answers and every model is pulled."""
     monkeypatch.setattr(
@@ -309,6 +319,20 @@ def test_summarize_without_a_log_or_with_an_unknown_id_exits_2(tmp_path, capsys)
         cli.main(["summarize", "--run-id", "r9", "--output", str(log)])
     assert unknown.value.code == 2
     assert "no benchmark run with ID r9" in capsys.readouterr().err
+
+
+def test_each_run_id_gets_one_manifest_beside_the_run_log(monkeypatch, tmp_path):
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+    output = tmp_path / "logs" / "runs.jsonl"
+
+    cli.main(["benchmark", "--model", "m", "--prompt", "p", "--repeats", "2",
+              "--warmup-runs", "0", "--output", str(output)])  # fmt: skip
+    cli.main(["ask", "--model", "m", "--prompt", "p", "--output", str(output)])
+
+    manifests = read_jsonl(tmp_path / "logs" / "manifests.jsonl")
+    run_ids = [r["run_id"] for r in read_jsonl(output)]
+    assert [m["run_id"] for m in manifests] == [run_ids[0], run_ids[2]]
+    assert manifests[0]["runtime"] == "0.40.16"
 
 
 def test_ask_records_get_their_own_run_id(monkeypatch, tmp_path):

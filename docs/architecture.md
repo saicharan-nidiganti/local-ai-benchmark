@@ -41,6 +41,7 @@ flowchart LR
 | CLI process | Python 3.11+, `local-ai-benchmark` console script | One per command | Stateless between commands; all state is in files |
 | Ollama server | Ollama 0.40 (reference), HTTP on `localhost:11434` | Long-running service | Keeps a model loaded for `keep_alive` (5 minutes by default here) |
 | Run log | JSON Lines, `data/raw/runs.jsonl` | Append-only, git-ignored | [ADR-0003](decisions/0003-append-only-jsonl-run-log.md) |
+| Manifests | JSON Lines, `data/raw/manifests.jsonl` | One line per run ID, git-ignored | [ADR-0007](decisions/0007-run-identity-and-manifests.md) |
 | Configuration | YAML, `configs/benchmark.yaml` and `configs/models.yaml` | Versioned in git | Read on every command; flags override ([ADR-0006](decisions/0006-configuration-and-pinned-settings.md)) |
 | Task suites | JSON Lines, `benchmarks/` | Versioned in git | Not read yet: **planned**, Phase 2 ([#19](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/19)) |
 | Reports | Markdown and figures, `reports/` | Curated output committed | **Planned**, Phase 3 ([#25](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/25)) |
@@ -57,7 +58,7 @@ flowchart TB
         config["config.py<br/>settings and model registry,<br/>flags override files"]
         preflight["preflight.py<br/>server and model checks<br/>before any request"]
         runtimeq["runtime.py<br/>server version, model details,<br/>GPU placement"]
-        manifest["manifest.py<br/>environment manifest<br/>Phase 1 · #14"]:::planned
+        manifest["manifest.py<br/>environment manifest,<br/>once per run ID"]
         sampler["sampler.py<br/>RAM, VRAM, power<br/>Phase 1 · #15"]:::planned
         suite["suite.py, scorers.py<br/>tasks and scoring<br/>Phase 2 · #19-#21"]:::planned
         report["report.py<br/>comparison report<br/>Phase 3 · #25"]:::planned
@@ -76,7 +77,7 @@ flowchart TB
     cli -.-> suite
     cli -.-> report
     inference -.-> sampler
-    cli -.-> manifest
+    cli --> manifest
     suite -.-> inference
     report -.-> log
     app -.-> inference
@@ -93,6 +94,7 @@ Solid boxes and arrows exist today; dashed ones are planned.
 | `metrics.py` | Append records to the run log and read them back; issue run IDs; group records by run; summarize a run with medians and order statistics | `append_jsonl`, `read_jsonl`, `new_run_id`, `benchmark_runs`, `select_run`, `summarize`, `run_summary`, `spread` | standard library |
 | `runtime.py` | Ask the Ollama server for its version, a model's details and digest, and where a loaded model sits (GPU or CPU); read `OLLAMA_HOST` as the Ollama client does | `host()`, `server_version()`, `model_details(name)`, `loaded_model(name)` | `ollama` client, `httpx` |
 | `preflight.py` | Before any request, confirm the server answers, the model is pulled, and the model can think if `--think` was given; otherwise fail with what to do | `check(model, think) -> Preflight`, `PreflightError` | `runtime` |
+| `manifest.py` | Describe the environment of one run ID: harness version and git commit, Python, OS, CPU, RAM, NVIDIA GPUs, AC power, Ollama version and host, model digest and capabilities; each probe degrades to null | `collect(run_id, server_version, model)`, `manifest_log(run_log)` | `runtime`, `psutil`, `git` and `nvidia-smi` when present |
 | `paths.py` | Locate the project folder (`LOCAL_AI_BENCHMARK_HOME`, else the source checkout, else the working folder) and the default run log in it | `project_root()`, `default_run_log()` | standard library |
 
 Dependency rules: no module imports `cli`; only `inference` (generation) and `runtime`
@@ -189,8 +191,12 @@ One JSON object per line in `data/raw/runs.jsonl`. Version 1, as written today:
 | `prefill_tokens_per_sec` | number or null | tokens/s | derived | Null when the runtime reports no prompt time |
 | `error` | string or null | | inference | `ExceptionType: message`; null on success |
 
-**Planned fields**, added without removing any of the above: a manifest
-reference and resource samples (Phase 1, [#14](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/14),
+The environment of a run is not repeated on each record: it is the line with the same
+`run_id` in `manifests.jsonl` ([ADR-0007](decisions/0007-run-identity-and-manifests.md)), with
+the sections `harness`, `python`, `os`, `cpu`, `memory_total_gb`, `gpus`, `power`, `runtime`
+and `model`.
+
+**Planned fields**, added without removing any of the above: resource samples (Phase 1, [#14](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/14),
 [#15](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/15)); `prompt_id`,
 `category` and `score` (Phase 2, [#21](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/21)).
 
@@ -235,9 +241,9 @@ completes and reports its error rate (NFR-4). A reply with no visible text is a 
 make every run fail are caught before the first one: the preflight checks the server and the
 model. Exit codes: 0 success, 2 configuration error, 3 runtime or model unavailable.
 
-**Reproducibility.** Today: warm-up exclusion, temperature and output limit recorded on
-benchmark runs, thinking disabled, every observation kept. Planned in Phase 1: pinned `seed`
-and `num_ctx`, a `run_id`, and an environment manifest (FR-4).
+**Reproducibility.** Warm-up exclusion; every generation setting pinned and recorded; a
+run ID on every record; one environment manifest per run ID; every observation kept
+(FR-4, FR-5).
 
 **Privacy.** The harness sends requests only to the Ollama host and sends no telemetry. The
 run log holds full prompts and replies, so it stays git-ignored. Enforcing a local-only host
@@ -257,7 +263,7 @@ recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settin
 
 | Attribute | How the design addresses it today | Planned |
 | --- | --- | --- |
-| Reproducibility | Fixed settings within a benchmark; warm-up exclusion; raw log kept | Seed, context length, run ID, manifest (#12, #13, #14) |
+| Reproducibility | Pinned and recorded settings; warm-up exclusion; run IDs; environment manifests; raw log kept | |
 | Measurement validity | Client TTFT plus runtime durations; prefill and decode speed; medians with p90 and IQR; thinking disabled | Resource samples (#15) |
 | Privacy | Local runtime only; no telemetry; raw log git-ignored | Local-only host enforced (#27) |
 | Robustness | Failures recorded, never raised; an empty reply is a failure; a preflight fails fast when the server or model is missing | |
@@ -280,3 +286,4 @@ recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settin
 | [0004](decisions/0004-measurement-protocol.md) | Measurement protocol |
 | [0005](decisions/0005-packaging-and-toolchain.md) | Packaging and toolchain |
 | [0006](decisions/0006-configuration-and-pinned-settings.md) | Configuration precedence and pinned generation settings |
+| [0007](decisions/0007-run-identity-and-manifests.md) | Run identity and environment manifests |
