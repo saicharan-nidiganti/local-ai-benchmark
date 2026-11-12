@@ -14,7 +14,17 @@ from typing import Any
 Record = dict[str, Any]
 
 # Metrics a summary describes, in the order they are printed.
-SUMMARY_METRICS = ("total_latency_ms", "ttft_ms", "tokens_per_sec", "prefill_tokens_per_sec")
+SUMMARY_METRICS = (
+    "total_latency_ms",
+    "ttft_ms",
+    "tokens_per_sec",
+    "prefill_tokens_per_sec",
+    "peak_runtime_rss_mb",
+    "peak_gpu_memory_mb",
+    "mean_gpu_power_w",
+    "gpu_energy_j",
+    "gpu_offload_pct",
+)
 
 
 class RunLogError(ValueError):

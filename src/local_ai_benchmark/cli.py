@@ -8,7 +8,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from . import __version__, manifest, preflight
+import httpx
+import ollama
+
+from . import __version__, manifest, preflight, runtime
 from .config import (
     BenchmarkSettings,
     ConfigError,
@@ -31,6 +34,9 @@ from .metrics import (
     utc_timestamp,
 )
 from .paths import default_run_log, project_root
+from .sampler import ResourceSampler, ResourceSummary
+
+NO_SAMPLES = ResourceSummary(0, None, None, None, None, None)
 
 OUTPUT_HELP = "run log to append to (default: data/raw/runs.jsonl in the project folder)"
 
@@ -67,7 +73,7 @@ def check_runtime(settings: BenchmarkSettings, model: ModelEntry) -> preflight.P
     checked = preflight.check(model.name, think=settings.generation.think)
     details = checked.model
     print(
-        f"Ollama {checked.server_version} \u00b7 {model.name} "
+        f"Ollama {checked.server_version} | {model.name} "
         f"({details.parameter_size or '?'} parameters, {details.quantization or '?'})"
     )
     return checked
@@ -80,15 +86,43 @@ def write_manifest(output: Path, run_id: str, checked: preflight.Preflight) -> P
     return path
 
 
+def placement(name: str) -> dict[str, Any]:
+    """Where the model sat after the run: the share of it in GPU memory, and its context."""
+    try:
+        loaded = runtime.loaded_model(name)
+    except (httpx.HTTPError, ollama.ResponseError, OSError):
+        loaded = None  # the run is recorded either way
+    share = loaded.gpu_share if loaded else None
+    return {
+        "gpu_offload_pct": None if share is None else round(share * 100, 1),
+        "loaded_context_length": loaded.context_length if loaded else None,
+    }
+
+
+def measured_run(
+    model: ModelEntry, prompt: str, settings: BenchmarkSettings, args: argparse.Namespace
+) -> dict[str, Any]:
+    """One request with its timings, its resource use, and where the model sat."""
+    if args.no_sampling:
+        result = generate(model=model.name, prompt=prompt, settings=settings.generation)
+        resources = NO_SAMPLES
+    else:
+        with ResourceSampler(interval_s=args.sample_interval) as sampler:
+            result = generate(model=model.name, prompt=prompt, settings=settings.generation)
+        resources = sampler.summary(result.total_latency_ms / 1000)
+    return {**result.to_dict(), **resources.record(), **placement(model.name)}
+
+
 def ask(args: argparse.Namespace) -> None:
     settings, model = resolve(args)
     checked = check_runtime(settings, model)
-    result = generate(model=model.name, prompt=args.prompt, settings=settings.generation)
+    measured = measured_run(model, args.prompt, settings, args)
 
     print("\n--- RESPONSE ---")
-    print(result.response or "[no response]")
+    print(measured["response"] or "[no response]")
     print("\n--- METRICS ---")
-    print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
+    shown = {k: v for k, v in measured.items() if k not in ("prompt", "response")}
+    print(json.dumps(shown, indent=2, ensure_ascii=False))
 
     run_id = new_run_id()
     record = {
@@ -96,7 +130,7 @@ def ask(args: argparse.Namespace) -> None:
         "run_id": run_id,
         "run_type": "single",
         **run_fields(settings, model),
-        **result.to_dict(),
+        **measured,
     }
     output = run_log(args)
     append_jsonl(output, record)
@@ -121,14 +155,14 @@ def benchmark(args: argparse.Namespace) -> None:
 
     for i in range(settings.repeats):
         print(f"Measured run {i + 1}/{settings.repeats}...")
-        result = generate(model=model.name, prompt=args.prompt, settings=settings.generation)
+        measured = measured_run(model, args.prompt, settings, args)
         record = {
             "timestamp": utc_timestamp(),
             "run_id": run_id,
             "run_type": "benchmark",
             "run_index": i + 1,
             **run_fields(settings, model),
-            **result.to_dict(),
+            **measured,
         }
         append_jsonl(output, record)
         records.append(record)
@@ -162,6 +196,14 @@ def _common_flags() -> argparse.ArgumentParser:
         action=argparse.BooleanOptionalAction,
         help="let a thinking model reason before it answers (default: off)",
     )
+    measure = common.add_argument_group("resource sampling")
+    measure.add_argument(
+        "--sample-interval",
+        type=float,
+        default=0.5,
+        help="seconds between RAM, VRAM and power samples during a run (default: 0.5)",
+    )
+    measure.add_argument("--no-sampling", action="store_true", help="do not sample resource use")
     files = common.add_argument_group("files")
     files.add_argument(
         "--config", type=Path, help="settings file (default: configs/benchmark.yaml)"
