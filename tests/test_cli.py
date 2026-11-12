@@ -6,8 +6,28 @@ import json
 
 import pytest
 
-from local_ai_benchmark import __version__, cli, paths
+from local_ai_benchmark import __version__, cli, paths, preflight, runtime
 from local_ai_benchmark.inference import InferenceResult
+
+MODEL_DETAILS = runtime.ModelDetails(
+    name="m",
+    digest="abc123",
+    family="qwen3",
+    parameter_size="4.0B",
+    quantization="Q4_K_M",
+    format="gguf",
+    capabilities=("completion",),
+)
+
+
+@pytest.fixture(autouse=True)
+def server_is_up(monkeypatch):
+    """Pretend the Ollama server answers and every model is pulled."""
+    monkeypatch.setattr(
+        cli.preflight,
+        "check",
+        lambda name, think=False: preflight.Preflight("0.40.16", MODEL_DETAILS),
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -201,6 +221,32 @@ def test_a_bad_settings_file_exits_with_a_clear_error(tmp_path, capsys):
 
     assert exit_info.value.code == 2
     assert "unknown setting(s): repeets" in capsys.readouterr().err
+
+
+def test_a_failed_preflight_stops_before_any_request(monkeypatch, tmp_path, capsys):
+    def down(name, think=False):
+        raise preflight.PreflightError("Ollama is not reachable at http://127.0.0.1:11434")
+
+    calls = []
+    monkeypatch.setattr(cli.preflight, "check", down)
+    monkeypatch.setattr(cli, "generate", lambda **kw: calls.append(kw) or stub_result(**kw))
+    output = tmp_path / "runs.jsonl"
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["benchmark", "--model", "m", "--prompt", "p", "--output", str(output)])
+
+    assert exit_info.value.code == 3
+    assert calls == []
+    assert not output.exists()
+    assert "not reachable" in capsys.readouterr().err
+
+
+def test_the_preflight_result_is_printed(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+
+    cli.main(["ask", "--model", "m", "--prompt", "p", "--output", str(tmp_path / "r.jsonl")])
+
+    assert "Ollama 0.40.16" in capsys.readouterr().out
 
 
 def test_version_flag(capsys):

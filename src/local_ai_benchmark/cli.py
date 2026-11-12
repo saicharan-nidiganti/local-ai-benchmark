@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from . import __version__
+from . import __version__, preflight
 from .config import (
     BenchmarkSettings,
     ConfigError,
@@ -53,8 +53,20 @@ def run_fields(settings: BenchmarkSettings, model: ModelEntry) -> dict[str, Any]
     return {"model_id": model.id, **settings.generation.record()}
 
 
+def check_runtime(settings: BenchmarkSettings, model: ModelEntry) -> preflight.Preflight:
+    """Fail before any request when the server or the model is missing."""
+    checked = preflight.check(model.name, think=settings.generation.think)
+    details = checked.model
+    print(
+        f"Ollama {checked.server_version} \u00b7 {model.name} "
+        f"({details.parameter_size or '?'} parameters, {details.quantization or '?'})"
+    )
+    return checked
+
+
 def ask(args: argparse.Namespace) -> None:
     settings, model = resolve(args)
+    check_runtime(settings, model)
     result = generate(model=model.name, prompt=args.prompt, settings=settings.generation)
 
     print("\n--- RESPONSE ---")
@@ -75,6 +87,7 @@ def ask(args: argparse.Namespace) -> None:
 
 def benchmark(args: argparse.Namespace) -> None:
     settings, model = resolve(args)
+    check_runtime(settings, model)
 
     # Warm-up runs are deliberately not included in the measured dataset.
     for i in range(settings.warmup_runs):
@@ -158,6 +171,8 @@ def main(argv: Sequence[str] | None = None) -> None:
         args.func(args)
     except ConfigError as exc:
         parser.exit(2, f"local-ai-benchmark: error: {exc}\n")
+    except preflight.PreflightError as exc:
+        parser.exit(3, f"local-ai-benchmark: error: {exc}\n")
 
 
 if __name__ == "__main__":
