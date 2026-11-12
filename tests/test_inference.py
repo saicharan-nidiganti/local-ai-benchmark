@@ -88,6 +88,28 @@ def test_throughput_is_none_when_runtime_reports_no_generation_time(monkeypatch)
     assert result.tokens_per_sec is None
 
 
+def test_counts_an_empty_reply_as_a_failed_run(monkeypatch):
+    # The 2026-09-25 case: tokens were generated, but none of them were visible text.
+    chunks = [{"response": "", "done": False}, FINAL_CHUNK]
+    monkeypatch.setattr(inference.ollama, "generate", fake_stream(chunks))
+
+    result = inference.generate(model="qwen3:4b", prompt="p")
+
+    assert result.error == inference.EMPTY_RESPONSE
+    assert result.response == ""
+    assert result.ttft_ms is None
+    assert result.output_tokens == 50  # the runtime's counts are kept for diagnosis
+
+
+def test_a_whitespace_only_reply_is_also_empty(monkeypatch):
+    chunks = [{"response": "\n\n  ", "done": False}, FINAL_CHUNK]
+    monkeypatch.setattr(inference.ollama, "generate", fake_stream(chunks))
+
+    result = inference.generate(model="m", prompt="p")
+
+    assert result.error == inference.EMPTY_RESPONSE
+
+
 def test_records_connection_failure_instead_of_raising(monkeypatch):
     def _generate(**_kwargs):
         raise ConnectionError("Ollama is not running")
