@@ -24,3 +24,11 @@ For the first baseline:
 **Generation throughput**: generated tokens divided by runtime-reported generation duration.
 
 This first implementation uses Ollama's generation metadata for token counts and generation duration, while TTFT is measured around the streamed client response.
+
+### Thinking models
+
+Models such as qwen3 can reason before they answer, and Ollama returns that reasoning
+separately from the reply. With thinking enabled, a short output limit can be spent
+entirely on reasoning: the reply is empty and no first token is ever observed, so TTFT is
+missing. The harness therefore disables thinking (`think=False`) on every request, which
+keeps TTFT and throughput comparable across thinking and non-thinking models.
