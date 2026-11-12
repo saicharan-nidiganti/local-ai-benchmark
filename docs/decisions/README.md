@@ -14,6 +14,7 @@ changed decision gets a new ADR that supersedes the old one.
 | [0004](0004-measurement-protocol.md) | Measurement protocol | Accepted |
 | [0005](0005-packaging-and-toolchain.md) | Packaging and toolchain | Accepted |
 | [0006](0006-configuration-and-pinned-settings.md) | Configuration precedence and pinned generation settings | Accepted |
+| [0007](0007-run-identity-and-manifests.md) | Run identity and environment manifests | Accepted |
 
 Decisions still to make, each tracked as an issue labelled `decision`:
 [the task-suite use case (#18)](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/18)

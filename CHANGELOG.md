@@ -40,6 +40,10 @@ All notable changes to this project are recorded here. The format follows
   from the log (`--run-id`, default the latest; `--list`). Summaries add p50, p90, min, max
   and IQR per metric, and prefill speed beside decode speed
   ([#13](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/13)).
+- An environment manifest per run ID in `manifests.jsonl` beside the run log: harness
+  version, git commit and dirty flag, Python, OS, CPU, RAM, NVIDIA GPUs, AC power, Ollama
+  version and host, model digest, quantization and capabilities; ADR-0007
+  ([#14](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/14)).
 
 ### Changed
 

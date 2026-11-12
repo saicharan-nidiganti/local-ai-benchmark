@@ -3,9 +3,9 @@
 Last verified: 2026-11-13 ([#2](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/2))
 
 Every published result names the machine and software it came from. This is the reference
-machine; results from any other machine must record the same items. From Phase 1 the harness
-writes them automatically into an environment manifest
-([#14](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/14)).
+machine; results from any other machine must record the same items. The harness writes them
+automatically, once per run ID, to `data/raw/manifests.jsonl`
+([ADR-0007](decisions/0007-run-identity-and-manifests.md)).
 
 ## Hardware
 
