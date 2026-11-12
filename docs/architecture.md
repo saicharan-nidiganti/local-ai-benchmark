@@ -87,6 +87,7 @@ Solid boxes and arrows exist today; dashed ones are planned.
 | `cli.py` | Parse arguments; run `ask` (one request) and `benchmark` (warm-ups, then measured runs); print results | `main()`, `build_parser()`, `ask(args)`, `benchmark(args)` | `inference`, `metrics` |
 | `inference.py` | Stream one generation from Ollama, time the first token on the client, read the runtime's durations, and turn any failure into a recorded error | `generate(model, prompt, temperature, max_output_tokens, keep_alive) -> InferenceResult` | `ollama` client |
 | `metrics.py` | Append one record per line to the run log; summarize a list of records | `append_jsonl(path, record)`, `summarize(records)`, `utc_timestamp()` | standard library |
+| `paths.py` | Locate the project folder (`LOCAL_AI_BENCHMARK_HOME`, else the source checkout, else the working folder) and the default run log in it | `project_root()`, `default_run_log()` | standard library |
 
 Dependency rules: `inference` and `metrics` never import `cli`; only `inference` talks to
 Ollama; only `metrics` writes the run log. Planned modules keep the same direction: the CLI
@@ -247,8 +248,6 @@ command-line flags; the effective values are recorded on every run.
 
 - `ask` records do not store their temperature or output limit
   ([#12](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/12)).
-- The default output path is relative to the working folder
-  ([#16](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/16)).
 - Summaries are printed, not rebuilt from the log
   ([#13](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/13)).
 - On the reference GPU, qwen3:4b at a 4096-token context keeps about a third of its memory
