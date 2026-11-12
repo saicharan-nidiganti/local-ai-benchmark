@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
 
-from local_ai_benchmark import __version__, cli, paths, preflight, runtime
+from local_ai_benchmark import __version__, cli, paths, preflight, runtime, sampler
 from local_ai_benchmark.inference import InferenceResult
 
 MODEL_DETAILS = runtime.ModelDetails(
@@ -18,6 +19,31 @@ MODEL_DETAILS = runtime.ModelDetails(
     format="gguf",
     capabilities=("completion",),
 )
+
+
+class FakeSampler:
+    """Stands in for ResourceSampler: no thread, fixed readings."""
+
+    def __init__(self, interval_s=0.5):
+        self.interval_s = interval_s
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return None
+
+    def summary(self, duration_s):
+        return sampler.ResourceSummary(3, 8000.0, 2500.0, 3500.0, 30.0, 30.0 * duration_s)
+
+
+@pytest.fixture(autouse=True)
+def fake_resources(monkeypatch):
+    """No real nvidia-smi, process scan or Ollama query during CLI tests."""
+    monkeypatch.setattr(cli, "ResourceSampler", FakeSampler)
+    monkeypatch.setattr(
+        cli.runtime, "loaded_model", lambda name: runtime.LoadedModel(name, 1000, 663, 4096)
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -333,6 +359,61 @@ def test_each_run_id_gets_one_manifest_beside_the_run_log(monkeypatch, tmp_path)
     run_ids = [r["run_id"] for r in read_jsonl(output)]
     assert [m["run_id"] for m in manifests] == [run_ids[0], run_ids[2]]
     assert manifests[0]["runtime"] == "0.40.16"
+
+
+def test_every_measured_run_records_its_resource_use_and_gpu_share(monkeypatch, tmp_path):
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["benchmark", "--model", "m", "--prompt", "p", "--repeats", "2",
+              "--warmup-runs", "0", "--output", str(output)])  # fmt: skip
+
+    for record in read_jsonl(output):
+        assert record["resource_samples"] == 3
+        assert record["peak_gpu_memory_mb"] == 3500.0
+        assert record["mean_gpu_power_w"] == 30.0
+        assert record["gpu_energy_j"] == 3.0  # 30 W over the stub's 100 ms
+        assert record["gpu_offload_pct"] == 66.3
+        assert record["loaded_context_length"] == 4096
+
+
+def test_no_sampling_keeps_the_fields_but_leaves_them_empty(monkeypatch, tmp_path):
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["ask", "--model", "m", "--prompt", "p", "--no-sampling", "--output", str(output)])
+
+    (record,) = read_jsonl(output)
+    assert record["resource_samples"] == 0
+    assert record["peak_gpu_memory_mb"] is None
+    assert record["gpu_offload_pct"] == 66.3  # placement is read from Ollama, not sampled
+
+
+def test_an_unreachable_server_after_the_run_leaves_the_placement_empty(monkeypatch, tmp_path):
+    def gone(name):
+        raise httpx.ConnectError("connection refused")
+
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+    monkeypatch.setattr(cli.runtime, "loaded_model", gone)
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["ask", "--model", "m", "--prompt", "p", "--output", str(output)])
+
+    (record,) = read_jsonl(output)
+    assert record["gpu_offload_pct"] is None
+    assert record["loaded_context_length"] is None
+
+
+def test_the_summary_includes_resource_statistics(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["benchmark", "--model", "m", "--prompt", "p", "--repeats", "2",
+              "--warmup-runs", "0", "--output", str(output)])  # fmt: skip
+
+    stats = printed_summary(capsys.readouterr().out)["stats"]
+    assert stats["peak_gpu_memory_mb"]["max"] == 3500.0
+    assert stats["gpu_offload_pct"]["p50"] == 66.3
 
 
 def test_ask_records_get_their_own_run_id(monkeypatch, tmp_path):

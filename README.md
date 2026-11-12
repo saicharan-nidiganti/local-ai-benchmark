@@ -44,6 +44,8 @@ controls for each of these:
 | Prefill speed | Prompt tokens divided by the runtime-reported prompt-evaluation time |
 | Load and prompt time | Model load and prompt-processing durations reported by Ollama |
 | Error rate | Failed runs divided by all runs in the benchmark |
+| Resource use | Peak RAM, runtime memory and GPU memory, mean GPU power and GPU energy, sampled every 0.5 s |
+| GPU share | How much of the loaded model sits in GPU memory, reported by Ollama after each run |
 
 Definitions and the reasoning behind them: [docs/methodology.md](docs/methodology.md).
 

@@ -34,6 +34,18 @@ median stays the headline number; p90 and the IQR show how much a single run can
 
 This first implementation uses Ollama's generation metadata for token counts and generation duration, while TTFT is measured around the streamed client response.
 
+### Resource use
+
+While each measured run executes, a background thread samples every 0.5 s
+(`--sample-interval`): system memory in use, the resident memory of the Ollama server and its
+model runner, and GPU memory and board power from `nvidia-smi`. A run records the peaks, the
+mean GPU power, and GPU energy as mean power times the run's total latency. After the run,
+Ollama reports how much of the loaded model sits in GPU memory (`gpu_offload_pct`).
+
+Limits: the energy figure covers the GPU board only, not the CPU, memory or screen; and a run
+shorter than the interval gets only its start and end samples. GPU fields are empty on a
+machine without an NVIDIA driver. `--no-sampling` skips sampling entirely.
+
 ### Fixed settings
 
 Every request carries the same temperature, output limit, sampling seed and context length,

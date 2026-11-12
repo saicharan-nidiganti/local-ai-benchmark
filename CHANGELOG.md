@@ -44,6 +44,11 @@ All notable changes to this project are recorded here. The format follows
   version, git commit and dirty flag, Python, OS, CPU, RAM, NVIDIA GPUs, AC power, Ollama
   version and host, model digest, quantization and capabilities; ADR-0007
   ([#14](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/14)).
+- Resource sampling during every measured run: peak system RAM, peak memory of the Ollama
+  server and its model runner, peak GPU memory, mean GPU power and GPU energy, plus the share
+  of the model in GPU memory and its loaded context. Summaries include them;
+  `--sample-interval` and `--no-sampling` control it
+  ([#15](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/15)).
 
 ### Changed
 

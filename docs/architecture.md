@@ -59,7 +59,7 @@ flowchart TB
         preflight["preflight.py<br/>server and model checks<br/>before any request"]
         runtimeq["runtime.py<br/>server version, model details,<br/>GPU placement"]
         manifest["manifest.py<br/>environment manifest,<br/>once per run ID"]
-        sampler["sampler.py<br/>RAM, VRAM, power<br/>Phase 1 · #15"]:::planned
+        sampler["sampler.py<br/>RAM, VRAM and GPU power<br/>during each run"]
         suite["suite.py, scorers.py<br/>tasks and scoring<br/>Phase 2 · #19-#21"]:::planned
         report["report.py<br/>comparison report<br/>Phase 3 · #25"]:::planned
         app["app.py<br/>offline application<br/>Phase 5 · #31"]:::planned
@@ -76,7 +76,7 @@ flowchart TB
     runtimeq --> ollama
     cli -.-> suite
     cli -.-> report
-    inference -.-> sampler
+    cli --> sampler
     cli --> manifest
     suite -.-> inference
     report -.-> log
@@ -95,6 +95,7 @@ Solid boxes and arrows exist today; dashed ones are planned.
 | `runtime.py` | Ask the Ollama server for its version, a model's details and digest, and where a loaded model sits (GPU or CPU); read `OLLAMA_HOST` as the Ollama client does | `host()`, `server_version()`, `model_details(name)`, `loaded_model(name)` | `ollama` client, `httpx` |
 | `preflight.py` | Before any request, confirm the server answers, the model is pulled, and the model can think if `--think` was given; otherwise fail with what to do | `check(model, think) -> Preflight`, `PreflightError` | `runtime` |
 | `manifest.py` | Describe the environment of one run ID: harness version and git commit, Python, OS, CPU, RAM, NVIDIA GPUs, AC power, Ollama version and host, model digest and capabilities; each probe degrades to null | `collect(run_id, server_version, model)`, `manifest_log(run_log)` | `runtime`, `psutil`, `git` and `nvidia-smi` when present |
+| `sampler.py` | Sample, in a background thread, system RAM, the memory of the Ollama server and its model runner, and GPU memory and power (`nvidia-smi`) while one request runs; summarize peaks, mean power and GPU energy | `ResourceSampler` (context manager), `summarize_samples(samples, duration_s)`, `ResourceSummary.record()` | `psutil`, `nvidia-smi` when present |
 | `paths.py` | Locate the project folder (`LOCAL_AI_BENCHMARK_HOME`, else the source checkout, else the working folder) and the default run log in it | `project_root()`, `default_run_log()` | standard library |
 
 Dependency rules: no module imports `cli`; only `inference` (generation) and `runtime`
@@ -190,14 +191,21 @@ One JSON object per line in `data/raw/runs.jsonl`. Version 1, as written today:
 | `prompt_eval_duration_ms` | number or null | ms | Ollama `prompt_eval_duration` | |
 | `prefill_tokens_per_sec` | number or null | tokens/s | derived | Null when the runtime reports no prompt time |
 | `error` | string or null | | inference | `ExceptionType: message`; null on success |
+| `resource_samples` | integer | | sampler | Samples taken during the run; 0 with `--no-sampling` |
+| `peak_system_ram_mb` | number or null | MiB | sampler | System memory in use, peak |
+| `peak_runtime_rss_mb` | number or null | MiB | sampler | Ollama server plus model runner (`llama-server`), peak; holds the part of the model not on the GPU |
+| `peak_gpu_memory_mb` | number or null | MiB | sampler | GPU memory in use, peak (`nvidia-smi`) |
+| `mean_gpu_power_w` | number or null | W | sampler | GPU board power, mean over the samples |
+| `gpu_energy_j` | number or null | J | derived | Mean GPU power times `total_latency_ms` |
+| `gpu_offload_pct` | number or null | % | Ollama `/api/ps` | Share of the loaded model's memory on the GPU, read after the run |
+| `loaded_context_length` | integer or null | tokens | Ollama `/api/ps` | Context the model was loaded with |
 
 The environment of a run is not repeated on each record: it is the line with the same
 `run_id` in `manifests.jsonl` ([ADR-0007](decisions/0007-run-identity-and-manifests.md)), with
 the sections `harness`, `python`, `os`, `cpu`, `memory_total_gb`, `gpus`, `power`, `runtime`
 and `model`.
 
-**Planned fields**, added without removing any of the above: resource samples (Phase 1, [#14](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/14),
-[#15](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/15)); `prompt_id`,
+**Planned fields**, added without removing any of the above: `prompt_id`,
 `category` and `score` (Phase 2, [#21](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/21)).
 
 ## 6. Deployment view
@@ -264,10 +272,10 @@ recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settin
 | Attribute | How the design addresses it today | Planned |
 | --- | --- | --- |
 | Reproducibility | Pinned and recorded settings; warm-up exclusion; run IDs; environment manifests; raw log kept | |
-| Measurement validity | Client TTFT plus runtime durations; prefill and decode speed; medians with p90 and IQR; thinking disabled | Resource samples (#15) |
+| Measurement validity | Client TTFT plus runtime durations; prefill and decode speed; medians with p90 and IQR; thinking disabled; memory, GPU power, energy and GPU share per run | |
 | Privacy | Local runtime only; no telemetry; raw log git-ignored | Local-only host enforced (#27) |
 | Robustness | Failures recorded, never raised; an empty reply is a failure; a preflight fails fast when the server or model is missing | |
-| Testability | Offline tests with simulated streams; 96% coverage | Fakes for the sampler and manifest |
+| Testability | Offline tests with simulated streams, a fake GPU probe and a fake sampler; 96% coverage | |
 | Maintainability | src layout, strict typing, Ruff, locked dependencies, ADRs | Protected `main` (#8) |
 | Portability | Windows and Linux in CI | |
 
