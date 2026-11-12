@@ -49,7 +49,8 @@ commit `pyproject.toml` and `uv.lock` together.
 2. **Branch** from `main`: `<type>/<issue>-<short-slug>`, for example
    `fix/9-empty-reply-is-a-failure`.
 3. **Commit** in [Conventional Commits](https://www.conventionalcommits.org/) form:
-   `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `build:`, `ci:`, `perf:` or `chore:`, an
+   `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `build:`, `ci:`, `perf:`, `chore:`, or
+   `experiment:` for a commit that publishes measured results; an
    imperative summary under 72 characters, and a body that says why.
 4. **Open a pull request** with the template, one issue per pull request, and `Closes #N`.
 5. **Merge** when CI is green and the checklist is done. Pull requests are squash-merged and

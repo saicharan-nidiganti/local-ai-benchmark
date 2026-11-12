@@ -11,10 +11,10 @@ so results can be audited and compared under fixed conditions. It is growing int
 app backed by a published comparison of three models on a 4 GB laptop GPU, with the privacy,
 latency and cost tradeoffs measured.
 
-> **Status: Phase 0 of 6, the foundation.** The measurement harness works and is covered by
-> an offline test suite in CI. Next: reproducible manifests and resource sampling (Phase 1),
-> then quality scoring, the three-model comparison, and the offline app. See
-> [Project status](#project-status).
+> **Status: Phase 1 of 6 complete, release v0.1.0.** The measurement harness records
+> timings, resource use and the environment of every run, and the first baseline is
+> published below. Next: quality scoring on a task suite (Phase 2), then the three-model
+> comparison and the offline app. See [Project status](#project-status).
 
 ## Why
 
@@ -104,6 +104,23 @@ uv run local-ai-benchmark summarize --list              # benchmarks in the log
 uv run local-ai-benchmark summarize --run-id <run ID>   # default: the latest
 ```
 
+## Results
+
+Baseline on the reference laptop (Ryzen 9 5900HX, RTX 3050 4 GB), qwen3:4b Q4_K_M, 1 warm-up
+and 5 measured runs, 256 output tokens:
+
+| Metric | Median |
+| --- | --- |
+| Decode speed | 30.8 tokens/s (IQR 0.2) |
+| Time to first token, warm | 47 ms |
+| Prefill speed | 600 tokens/s |
+| Model share in GPU memory | 66% at a 4096-token context |
+| GPU energy per 256-token answer | 320 J |
+
+Only two thirds of a 4B model fits in 4 GB of VRAM; the rest runs from system memory. Setup,
+full statistics, the environment manifest and every run:
+[results/2026-11-13-qwen3-4b-baseline](results/2026-11-13-qwen3-4b-baseline/).
+
 ## Reproducibility
 
 A measurement is only comparable with another taken under the same conditions. Keep these
@@ -171,7 +188,8 @@ configs/                  benchmark settings and model definitions
 data/raw/                 run log (git-ignored)
 docs/                     requirements, architecture, methodology, environment, roadmap
 docs/decisions/           architecture decision records
-reports/                  curated reports and figures
+reports/                  generated reports and figures
+results/                  curated, published results, one folder per experiment
 src/local_ai_benchmark/   cli.py (commands), inference.py (Ollama client and timing),
                           metrics.py (run log and summaries)
 tests/                    offline test suite
