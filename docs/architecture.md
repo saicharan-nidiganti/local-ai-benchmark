@@ -296,3 +296,4 @@ recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settin
 | [0005](decisions/0005-packaging-and-toolchain.md) | Packaging and toolchain |
 | [0006](decisions/0006-configuration-and-pinned-settings.md) | Configuration precedence and pinned generation settings |
 | [0007](decisions/0007-run-identity-and-manifests.md) | Run identity and environment manifests |
+| [0008](decisions/0008-use-case-support-ticket-triage.md) | Use case: support-ticket triage |
