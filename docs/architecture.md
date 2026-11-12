@@ -43,7 +43,7 @@ flowchart LR
 | Run log | JSON Lines, `data/raw/runs.jsonl` | Append-only, git-ignored | [ADR-0003](decisions/0003-append-only-jsonl-run-log.md) |
 | Manifests | JSON Lines, `data/raw/manifests.jsonl` | One line per run ID, git-ignored | [ADR-0007](decisions/0007-run-identity-and-manifests.md) |
 | Configuration | YAML, `configs/benchmark.yaml` and `configs/models.yaml` | Versioned in git | Read on every command; flags override ([ADR-0006](decisions/0006-configuration-and-pinned-settings.md)) |
-| Task suites | JSON Lines, `benchmarks/` | Versioned in git | Not read yet: **planned**, Phase 2 ([#19](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/19)) |
+| Task suites | JSON Lines, `benchmarks/support_triage_v1.jsonl` | Versioned in git | 15 fictional tickets, 45 tasks ([benchmarks/README.md](../benchmarks/README.md), [ADR-0008](decisions/0008-use-case-support-ticket-triage.md)) |
 | Reports | Markdown and figures, `reports/` | Curated output committed | **Planned**, Phase 3 ([#25](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/25)) |
 
 ## 3. Components
@@ -96,6 +96,7 @@ Solid boxes and arrows exist today; dashed ones are planned.
 | `preflight.py` | Before any request, confirm the server answers, the model is pulled, and the model can think if `--think` was given; otherwise fail with what to do | `check(model, think) -> Preflight`, `PreflightError` | `runtime` |
 | `manifest.py` | Describe the environment of one run ID: harness version and git commit, Python, OS, CPU, RAM, NVIDIA GPUs, AC power, Ollama version and host, model digest and capabilities; each probe degrades to null | `collect(run_id, server_version, model)`, `manifest_log(run_log)` | `runtime`, `psutil`, `git` and `nvidia-smi` when present |
 | `sampler.py` | Sample, in a background thread, system RAM, the memory of the Ollama server and its model runner, and GPU memory and power (`nvidia-smi`) while one request runs; summarize peaks, mean power and GPU energy | `ResourceSampler` (context manager), `summarize_samples(samples, duration_s)`, `ResourceSummary.record()` | `psutil`, `nvidia-smi` when present |
+| `suite.py` | Load and validate a suite file (pydantic: label sets, required keys, duplicate ids); expand each ticket into classify, extract and summarize tasks with the versioned prompts | `load_suite(path) -> Suite`, `Suite.tasks()`, `Task.prompt`, `SuiteError` | pydantic |
 | `paths.py` | Locate the project folder (`LOCAL_AI_BENCHMARK_HOME`, else the source checkout, else the working folder) and the default run log in it | `project_root()`, `default_run_log()` | standard library |
 
 Dependency rules: no module imports `cli`; only `inference` (generation) and `runtime`
@@ -225,7 +226,7 @@ CI never runs a model: the tests replace the Ollama client with simulated stream
 
 ```text
 .github/                  CI workflow, issue and pull request templates, CODEOWNERS, Dependabot
-benchmarks/               versioned task suites (Phase 2 grows prompts_v1.jsonl)
+benchmarks/               versioned task suites and their format
 configs/                  benchmark settings and the model registry
 data/raw/                 run log, git-ignored
 data/processed/           derived data, git-ignored
