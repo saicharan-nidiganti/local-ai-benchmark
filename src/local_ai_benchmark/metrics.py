@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from statistics import median, quantiles
+from statistics import fmean, median, quantiles
 from typing import Any
 
 Record = dict[str, Any]
@@ -25,6 +25,11 @@ SUMMARY_METRICS = (
     "gpu_energy_j",
     "gpu_offload_pct",
 )
+
+
+# Run types whose records are measured, grouped by run ID and summarized.
+MEASURED_RUN_TYPES = ("benchmark", "suite")
+TASK_KINDS = ("classify", "extract", "summarize")
 
 
 class RunLogError(ValueError):
@@ -122,36 +127,88 @@ def run_summary(run_id: str, records: list[Record]) -> Record:
     }
 
 
+def _mean(values: list[float]) -> float | None:
+    return fmean(values) if values else None
+
+
+def _rate(records: list[Record], key: str) -> float | None:
+    known = [bool(r[key]) for r in records if r.get(key) is not None]
+    return sum(known) / len(known) if known else None
+
+
+def suite_summary(run_id: str, records: list[Record]) -> Record:
+    """Quality per task kind and JSON reliability, beside the speed summary. A failed run
+    scores 0: an answer that never arrived is a wrong answer."""
+    scores = [float(r.get("score") or 0.0) for r in records]
+    structured = [r for r in records if r.get("task") in ("classify", "extract")]
+    return {
+        "run_id": run_id,
+        "model": records[0].get("model") if records else None,
+        "suite": records[0].get("suite") if records else None,
+        "json_mode": next((r["json_mode"] for r in structured if r.get("json_mode")), None),
+        "tasks": len(records),
+        "quality": {
+            "overall": _mean(scores),
+            **{
+                kind: _mean(
+                    [float(r.get("score") or 0.0) for r in records if r.get("task") == kind]
+                )
+                for kind in TASK_KINDS
+            },
+        },
+        "json": {
+            "strict_rate": _rate(structured, "json_strict"),
+            "valid_rate": _rate(structured, "json_valid"),
+            "schema_valid_rate": _rate(structured, "schema_valid"),
+        },
+        "speed": summarize(records),
+    }
+
+
+def summary_of(run_id: str, records: list[Record]) -> Record:
+    """The summary that matches the run's type."""
+    if records and records[0].get("run_type") == "suite":
+        return suite_summary(run_id, records)
+    return run_summary(run_id, records)
+
+
 @dataclass(frozen=True)
 class RunInfo:
     run_id: str
     model: str | None
     started: str | None
     runs: int
+    run_type: str = "benchmark"
 
 
 def benchmark_runs(records: Iterable[Record]) -> list[RunInfo]:
-    """Benchmark run IDs in the log, oldest first."""
+    """Benchmark and suite run IDs in the log, oldest first."""
     seen: dict[str, list[Record]] = {}
     for record in records:
         run_id = record.get("run_id")
-        if record.get("run_type") == "benchmark" and run_id:
+        if record.get("run_type") in MEASURED_RUN_TYPES and run_id:
             seen.setdefault(run_id, []).append(record)
     return [
-        RunInfo(run_id, group[0].get("model"), group[0].get("timestamp"), len(group))
+        RunInfo(
+            run_id,
+            group[0].get("model"),
+            group[0].get("timestamp"),
+            len(group),
+            str(group[0].get("run_type")),
+        )
         for run_id, group in seen.items()
     ]
 
 
 def select_run(records: list[Record], run_id: str | None) -> tuple[str, list[Record]]:
-    """The measured records of one benchmark; the most recent one when no ID is given."""
+    """The measured records of one run; the most recent one when no ID is given."""
     runs = benchmark_runs(records)
     if not runs:
-        raise RunLogError("the run log has no benchmark runs with a run ID")
+        raise RunLogError("the run log has no benchmark or suite runs with a run ID")
     chosen = run_id or runs[-1].run_id
     selected = [
-        r for r in records if r.get("run_id") == chosen and r.get("run_type") == "benchmark"
+        r for r in records if r.get("run_id") == chosen and r.get("run_type") in MEASURED_RUN_TYPES
     ]
     if not selected:
-        raise RunLogError(f"no benchmark run with ID {chosen}")
+        raise RunLogError(f"no benchmark or suite run with ID {chosen}")
     return chosen, selected

@@ -19,6 +19,15 @@ All notable changes to this project are recorded here. The format follows
   field accuracy with pydantic schema checks for extract, required facts and the 40-word
   limit for summarize; JSON judged as strict, recovered or invalid
   ([#20](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/20)).
+- `suite` command: runs every task of a suite (or one kind with `--tasks`), scores each
+  reply, records score, JSON checks and score details next to timings and resources, and
+  prints quality per task kind with the JSON rates; `summarize` rebuilds suite runs too
+  ([#21](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/21)).
+- Structured output for the JSON tasks: classify and extract send their JSON schema as
+  Ollama's `format` by default (`--json-mode schema`); `--json-mode prompt` keeps the prompt
+  alone. qwen3:4b scored 0 on every JSON task with the prompt alone because it narrates its
+  reasoning in the reply; ADR-0009 records the finding and the decision
+  ([#21](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/21)).
 
 ### Removed
 

@@ -30,6 +30,14 @@ class ExtractOutput(BaseModel):
     issue: str
 
 
+# JSON schemas for Ollama's structured-output mode, generated from the same models the
+# replies are validated against (ADR-0009).
+JSON_SCHEMAS: dict[str, dict[str, Any]] = {
+    "classify": ClassifyOutput.model_json_schema(),
+    "extract": ExtractOutput.model_json_schema(),
+}
+
+
 @dataclass(frozen=True)
 class Score:
     score: float

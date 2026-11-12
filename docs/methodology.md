@@ -45,8 +45,17 @@ score from 0 to 1, computed from the reply alone:
 | Extract | A quarter for each field: order number (case, spaces and a leading `#` ignored), customer name and product (equal or contained after normalizing), and issue (contains one of the expected keywords) |
 | Summarize | The share of required facts present; halved when the summary exceeds 40 words |
 
+A run's quality is the mean score over its tasks, overall and per task kind. A task whose
+request failed scores 0: an answer that never arrived is a wrong answer, so unreliability
+lowers quality as well as raising the error rate.
+
 Normalizing ignores case, punctuation and spacing, and keeps hyphens (`A-1042`). Missing
 values such as `null`, `none` or `N/A` count as no value.
+
+By default the JSON tasks run with **structured output**: the task's JSON schema is sent as
+Ollama's `format`, so the runtime constrains the reply to it, as the offline app will. With
+`--json-mode prompt` the prompt alone asks for JSON; the two modes are compared in #22 and
+are never mixed in one result ([ADR-0009](decisions/0009-structured-output-for-json-tasks.md)).
 
 JSON is judged in two steps: **strict** when the whole reply is one JSON object, and **valid**
 when an object can be recovered from a code fence or surrounding prose. Scores use the

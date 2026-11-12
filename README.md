@@ -97,10 +97,17 @@ Each measured run is appended to `data/raw/runs.jsonl`, and the command prints a
 the run count, error rate, and median latency, TTFT and throughput.
 `python -m local_ai_benchmark` works in place of `local-ai-benchmark`.
 
-Every benchmark gets a run ID. Rebuild its summary from the log at any time:
+Score a model on the whole task suite (45 support-ticket tasks: classify, extract, summarize):
 
 ```bash
-uv run local-ai-benchmark summarize --list              # benchmarks in the log
+uv run local-ai-benchmark suite --model qwen3-4b    # --tasks classify to run one kind
+uv run local-ai-benchmark suite --model qwen3-4b --json-mode prompt   # JSON from the prompt alone
+```
+
+Every benchmark and suite run gets a run ID. Rebuild its summary from the log at any time:
+
+```bash
+uv run local-ai-benchmark summarize --list              # benchmark and suite runs in the log
 uv run local-ai-benchmark summarize --run-id <run ID>   # default: the latest
 ```
 

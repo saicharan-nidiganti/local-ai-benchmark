@@ -149,7 +149,7 @@ def test_runs_are_grouped_and_the_latest_is_selected_by_default():
 
 
 def test_select_run_reports_an_unknown_id_and_an_empty_log():
-    with pytest.raises(RunLogError, match="no benchmark run with ID r9"):
+    with pytest.raises(RunLogError, match="no benchmark or suite run with ID r9"):
         select_run([bench("r1", 1)], "r9")
-    with pytest.raises(RunLogError, match="no benchmark runs"):
+    with pytest.raises(RunLogError, match="no benchmark or suite runs"):
         select_run([{"run_type": "single"}], None)

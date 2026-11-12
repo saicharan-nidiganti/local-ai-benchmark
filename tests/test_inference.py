@@ -185,3 +185,20 @@ def test_prefill_speed_is_none_without_a_prompt_evaluation_time(monkeypatch):
     monkeypatch.setattr(inference.ollama, "generate", fake_stream([chunk]))
 
     assert inference.generate(model="m", prompt="p").prefill_tokens_per_sec is None
+
+
+def test_an_output_schema_is_passed_to_ollama(monkeypatch):
+    seen = {}
+
+    def _generate(**kwargs):
+        seen.update(kwargs)
+        yield {**FINAL_CHUNK, "response": "{}"}
+
+    monkeypatch.setattr(inference.ollama, "generate", _generate)
+    schema = {"type": "object", "properties": {"a": {"type": "string"}}}
+
+    inference.generate(model="m", prompt="p", output_format=schema)
+    assert seen["format"] == schema
+
+    inference.generate(model="m", prompt="p")
+    assert seen["format"] is None

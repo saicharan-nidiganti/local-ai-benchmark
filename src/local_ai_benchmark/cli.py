@@ -11,7 +11,7 @@ from typing import Any
 import httpx
 import ollama
 
-from . import __version__, manifest, preflight, runtime
+from . import __version__, manifest, preflight, runtime, scorers
 from .config import (
     BenchmarkSettings,
     ConfigError,
@@ -31,10 +31,12 @@ from .metrics import (
     read_jsonl,
     run_summary,
     select_run,
+    summary_of,
     utc_timestamp,
 )
 from .paths import default_run_log, project_root
 from .sampler import ResourceSampler, ResourceSummary
+from .suite import TASK_KINDS, SuiteError, load_suite
 
 NO_SAMPLES = ResourceSummary(0, None, None, None, None, None)
 
@@ -100,15 +102,26 @@ def placement(name: str) -> dict[str, Any]:
 
 
 def measured_run(
-    model: ModelEntry, prompt: str, settings: BenchmarkSettings, args: argparse.Namespace
+    model: ModelEntry,
+    prompt: str,
+    settings: BenchmarkSettings,
+    args: argparse.Namespace,
+    output_format: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """One request with its timings, its resource use, and where the model sat."""
+    request: dict[str, Any] = {
+        "model": model.name,
+        "prompt": prompt,
+        "settings": settings.generation,
+    }
+    if output_format is not None:
+        request["output_format"] = output_format
     if args.no_sampling:
-        result = generate(model=model.name, prompt=prompt, settings=settings.generation)
+        result = generate(**request)
         resources = NO_SAMPLES
     else:
         with ResourceSampler(interval_s=args.sample_interval) as sampler:
-            result = generate(model=model.name, prompt=prompt, settings=settings.generation)
+            result = generate(**request)
         resources = sampler.summary(result.total_latency_ms / 1000)
     return {**result.to_dict(), **resources.record(), **placement(model.name)}
 
@@ -173,14 +186,68 @@ def benchmark(args: argparse.Namespace) -> None:
     print(f"Summarize it again with: local-ai-benchmark summarize --run-id {run_id}")
 
 
+def suite_command(args: argparse.Namespace) -> None:
+    settings, model = resolve(args)
+    suite = load_suite(args.suite or project_root() / "benchmarks" / "support_triage_v1.jsonl")
+    kinds = args.tasks.split(",") if args.tasks else list(TASK_KINDS)
+    unknown = sorted(set(kinds) - set(TASK_KINDS))
+    if unknown:
+        raise SuiteError(f"unknown task kind(s): {', '.join(unknown)}")
+    tasks = [task for task in suite.tasks() if task.kind in kinds]
+    checked = check_runtime(settings, model)
+    print(f"Suite: {suite.name}, {len(tasks)} tasks x {args.repeats}, JSON mode: {args.json_mode}")
+
+    # The model is loaded and warmed on the first task; warm-up runs are never recorded.
+    for i in range(settings.warmup_runs):
+        print(f"Warm-up {i + 1}/{settings.warmup_runs}...")
+        generate(model=model.name, prompt=tasks[0].prompt, settings=settings.generation)
+
+    output = run_log(args)
+    run_id = new_run_id()
+    print(f"Run ID: {run_id}")
+    print(f"Manifest: {write_manifest(output, run_id, checked)}")
+    records = []
+    for repeat in range(args.repeats):
+        for n, task in enumerate(tasks, start=1):
+            schema = scorers.JSON_SCHEMAS.get(task.kind) if args.json_mode == "schema" else None
+            measured = measured_run(model, task.prompt, settings, args, output_format=schema)
+            scored = scorers.score(task, measured["response"] if not measured["error"] else "")
+            print(f"[{n}/{len(tasks)}] {task.id}: score {scored.score:.2f}")
+            record = {
+                "timestamp": utc_timestamp(),
+                "run_id": run_id,
+                "run_type": "suite",
+                "run_index": repeat * len(tasks) + n,
+                "suite": suite.name,
+                "task_id": task.id,
+                "ticket_id": task.ticket.id,
+                "task": task.kind,
+                "json_mode": args.json_mode if task.kind in scorers.JSON_SCHEMAS else None,
+                **run_fields(settings, model),
+                **measured,
+                **scored.record(),
+            }
+            append_jsonl(output, record)
+            records.append(record)
+
+    summary = summary_of(run_id, records)
+    print("\n--- SUMMARY ---")
+    print(json.dumps(summary, indent=2))
+    quality = summary["quality"]
+    parts = ", ".join(f"{k} {quality[k]:.2f}" for k in kinds)
+    print(f"\nQuality: overall {quality['overall']:.2f} ({parts})")
+    print(f"Raw results: {output}")
+    print(f"Summarize it again with: local-ai-benchmark summarize --run-id {run_id}")
+
+
 def summarize_command(args: argparse.Namespace) -> None:
     records = read_jsonl(run_log(args))
     if args.list:
         for run in benchmark_runs(records):
-            print(f"{run.run_id}  {run.model}  {run.runs} runs  {run.started}")
+            print(f"{run.run_id}  {run.run_type}  {run.model}  {run.runs} runs  {run.started}")
         return
     run_id, selected = select_run(records, args.run_id)
-    print(json.dumps(run_summary(run_id, selected), indent=2))
+    print(json.dumps(summary_of(run_id, selected), indent=2))
 
 
 def _common_flags() -> argparse.ArgumentParser:
@@ -237,9 +304,40 @@ def build_parser() -> argparse.ArgumentParser:
     p_bench.add_argument("--warmup-runs", type=int, help="unrecorded runs first (default: 1)")
     p_bench.set_defaults(func=benchmark)
 
-    p_sum = sub.add_parser("summarize", help="rebuild a benchmark's summary from the run log")
-    p_sum.add_argument("--run-id", help="the benchmark to summarize (default: the latest)")
-    p_sum.add_argument("--list", action="store_true", help="list the benchmarks in the log")
+    p_suite = sub.add_parser(
+        "suite", parents=[common], help="run and score every task of a task suite"
+    )
+    p_suite.add_argument("--model", required=True, help=model_help)
+    p_suite.add_argument(
+        "--suite",
+        type=Path,
+        help="suite file (default: benchmarks/support_triage_v1.jsonl in the project folder)",
+    )
+    p_suite.add_argument(
+        "--tasks", help="comma-separated task kinds to run (default: classify,extract,summarize)"
+    )
+    p_suite.add_argument(
+        "--repeats", type=int, default=1, help="times to run every task (default: 1)"
+    )
+    p_suite.add_argument(
+        "--json-mode",
+        choices=("schema", "prompt"),
+        default="schema",
+        help="schema: the runtime constrains JSON tasks to their schema (default); "
+        "prompt: the prompt alone asks for JSON",
+    )
+    p_suite.add_argument(
+        "--warmup-runs", type=int, help="unrecorded runs of the first task first (default: 1)"
+    )
+    p_suite.set_defaults(func=suite_command)
+
+    p_sum = sub.add_parser(
+        "summarize", help="rebuild a benchmark's or a suite run's summary from the run log"
+    )
+    p_sum.add_argument("--run-id", help="the run to summarize (default: the latest)")
+    p_sum.add_argument(
+        "--list", action="store_true", help="list the benchmark and suite runs in the log"
+    )
     p_sum.add_argument("--output", type=Path, help="run log to read (default: as for benchmark)")
     p_sum.set_defaults(func=summarize_command)
 
@@ -251,7 +349,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     args = parser.parse_args(argv)
     try:
         args.func(args)
-    except (ConfigError, RunLogError) as exc:
+    except (ConfigError, RunLogError, SuiteError) as exc:
         parser.exit(2, f"local-ai-benchmark: error: {exc}\n")
     except preflight.PreflightError as exc:
         parser.exit(3, f"local-ai-benchmark: error: {exc}\n")
