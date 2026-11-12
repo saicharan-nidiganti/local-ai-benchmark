@@ -22,6 +22,9 @@ All notable changes to this project are recorded here. The format follows
   `CONTRIBUTING.md` and `SECURITY.md`
   ([#7](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/7),
   [#2](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/2)).
+- Issue templates (bug, feature, experiment), a pull request template with the definition of
+  done, `CODEOWNERS`, and monthly grouped Dependabot updates for GitHub Actions and uv
+  ([#8](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/8)).
 
 ### Changed
 
