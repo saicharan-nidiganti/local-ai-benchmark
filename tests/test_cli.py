@@ -129,6 +129,19 @@ def test_every_record_states_its_model_id_and_generation_settings(monkeypatch, t
     assert record["seed"] == 42
     assert record["num_ctx"] == 4096
     assert record["keep_alive"] == "5m"
+    assert record["think"] is False
+
+
+def test_the_think_flag_switches_thinking_on_and_is_recorded(monkeypatch, tmp_path):
+    calls = []
+    monkeypatch.setattr(cli, "generate", lambda **kw: calls.append(kw) or stub_result(**kw))
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["ask", "--model", "m", "--prompt", "p", "--think", "--output", str(output)])
+
+    assert calls[0]["settings"].think is True
+    (record,) = read_jsonl(output)
+    assert record["think"] is True
 
 
 def test_the_project_settings_file_applies_and_flags_override_it(

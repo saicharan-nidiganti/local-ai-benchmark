@@ -8,3 +8,4 @@ benchmark:
   seed: 42                 # fixed, so sampling is repeatable
   num_ctx: 4096            # context length in tokens; it also sets how much memory the model needs
   keep_alive: "5m"         # how long Ollama keeps the model loaded between requests
+  think: false             # thinking models reason before answering only when true

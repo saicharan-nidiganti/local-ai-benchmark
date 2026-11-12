@@ -29,6 +29,9 @@ All notable changes to this project are recorded here. The format follows
   command-line overrides, validated keys and types, and clear errors; `--seed`, `--num-ctx`
   and `--keep-alive` flags; `--version`. Every run, `ask` included, records its model id and
   generation settings ([#12](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/12)).
+- `--think` / `--no-think` (and `think:` in the settings file) to let a thinking model reason
+  before it answers; off by default and recorded on every run
+  ([#11](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/11)).
 
 ### Changed
 

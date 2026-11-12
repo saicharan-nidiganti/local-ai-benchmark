@@ -40,6 +40,7 @@ def resolve(args: argparse.Namespace) -> tuple[BenchmarkSettings, ModelEntry]:
         seed=args.seed,
         num_ctx=args.num_ctx,
         keep_alive=args.keep_alive,
+        think=args.think,
         repeats=getattr(args, "repeats", None),
         warmup_runs=getattr(args, "warmup_runs", None),
     )
@@ -109,6 +110,11 @@ def _common_flags() -> argparse.ArgumentParser:
     gen.add_argument("--seed", type=int)
     gen.add_argument("--num-ctx", type=int, help="context length in tokens")
     gen.add_argument("--keep-alive", help="how long Ollama keeps the model loaded, e.g. 5m")
+    gen.add_argument(
+        "--think",
+        action=argparse.BooleanOptionalAction,
+        help="let a thinking model reason before it answers (default: off)",
+    )
     files = common.add_argument_group("files")
     files.add_argument(
         "--config", type=Path, help="settings file (default: configs/benchmark.yaml)"
