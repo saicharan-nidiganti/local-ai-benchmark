@@ -4,8 +4,19 @@ from __future__ import annotations
 
 import json
 
-from local_ai_benchmark import cli
+import pytest
+
+from local_ai_benchmark import __version__, cli, paths
 from local_ai_benchmark.inference import InferenceResult
+
+
+@pytest.fixture(autouse=True)
+def isolated_project(monkeypatch, tmp_path):
+    """Run every test in an empty project folder, so the repository's config files don't apply."""
+    home = tmp_path / "project"
+    home.mkdir()
+    monkeypatch.setenv(paths.HOME_ENV_VAR, str(home))
+    return home
 
 
 def stub_result(model, prompt, **_settings):
@@ -103,3 +114,84 @@ def test_ask_appends_one_record_and_creates_the_output_folder(monkeypatch, tmp_p
     (record,) = read_jsonl(output)
     assert record["run_type"] == "single"
     assert record["response"] == "ok"
+
+
+def test_every_record_states_its_model_id_and_generation_settings(monkeypatch, tmp_path):
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["ask", "--model", "m", "--prompt", "p", "--output", str(output)])
+
+    (record,) = read_jsonl(output)
+    assert record["model_id"] == "m"
+    assert record["temperature"] == 0.0
+    assert record["max_output_tokens"] == 256
+    assert record["seed"] == 42
+    assert record["num_ctx"] == 4096
+    assert record["keep_alive"] == "5m"
+
+
+def test_the_project_settings_file_applies_and_flags_override_it(
+    monkeypatch, tmp_path, isolated_project
+):
+    configs = isolated_project / "configs"
+    configs.mkdir()
+    (configs / "benchmark.yaml").write_text(
+        "benchmark:\n  repeats: 1\n  warmup_runs: 0\n  seed: 7\n", encoding="utf-8"
+    )
+    calls = []
+    monkeypatch.setattr(cli, "generate", lambda **kw: calls.append(kw) or stub_result(**kw))
+    output = tmp_path / "runs.jsonl"
+    base = ["benchmark", "--model", "m", "--prompt", "p", "--output", str(output)]
+
+    cli.main(base)
+    cli.main([*base, "--seed", "9"])
+
+    assert [r["seed"] for r in read_jsonl(output)] == [7, 9]
+    assert len(calls) == 2  # repeats 1 and no warm-up, from the file
+    assert calls[1]["settings"].seed == 9
+
+
+def test_a_registry_id_runs_the_tagged_model(monkeypatch, tmp_path):
+    registry = tmp_path / "models.yaml"
+    registry.write_text("models:\n  - id: fast\n    name: tag:1\n", encoding="utf-8")
+    calls = []
+    monkeypatch.setattr(cli, "generate", lambda **kw: calls.append(kw) or stub_result(**kw))
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(
+        [
+            "ask",
+            "--model",
+            "fast",
+            "--prompt",
+            "p",
+            "--models",
+            str(registry),
+            "--output",
+            str(output),
+        ]
+    )
+
+    assert calls[0]["model"] == "tag:1"
+    (record,) = read_jsonl(output)
+    assert record["model_id"] == "fast"
+    assert record["model"] == "tag:1"
+
+
+def test_a_bad_settings_file_exits_with_a_clear_error(tmp_path, capsys):
+    bad = tmp_path / "bad.yaml"
+    bad.write_text("benchmark:\n  repeets: 3\n", encoding="utf-8")
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["benchmark", "--model", "m", "--prompt", "p", "--config", str(bad)])
+
+    assert exit_info.value.code == 2
+    assert "unknown setting(s): repeets" in capsys.readouterr().err
+
+
+def test_version_flag(capsys):
+    with pytest.raises(SystemExit):
+        cli.main(["--version"])
+
+    assert __version__ in capsys.readouterr().out

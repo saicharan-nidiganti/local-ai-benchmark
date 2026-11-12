@@ -25,12 +25,18 @@ All notable changes to this project are recorded here. The format follows
 - Issue templates (bug, feature, experiment), a pull request template with the definition of
   done, `CODEOWNERS`, and monthly grouped Dependabot updates for GitHub Actions and uv
   ([#8](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/8)).
+- Settings from `configs/benchmark.yaml` and a model registry in `configs/models.yaml`, with
+  command-line overrides, validated keys and types, and clear errors; `--seed`, `--num-ctx`
+  and `--keep-alive` flags; `--version`. Every run, `ask` included, records its model id and
+  generation settings ([#12](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/12)).
 
 ### Changed
 
 - The package moved to a src layout and is now named `local_ai_benchmark`
   (`python -m local_ai_benchmark`); it builds with hatchling. The empty `runners/` package is
   gone ([#5](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/5)).
+- Sampling seed (42) and context length (4096 tokens) are now pinned on every request instead
+  of left to Ollama's defaults ([#12](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/12)).
 
 ### Fixed
 

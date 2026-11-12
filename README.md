@@ -86,6 +86,10 @@ uv run local-ai-benchmark benchmark --model qwen3:4b \
   --repeats 5 --warmup-runs 1 --temperature 0 --max-output-tokens 256
 ```
 
+Settings come from [configs/benchmark.yaml](configs/benchmark.yaml) (temperature, output limit,
+seed, context length, repeats); flags override them, and every run records the values it used.
+`--model` takes an Ollama tag or an id from [configs/models.yaml](configs/models.yaml).
+
 Each measured run is appended to `data/raw/runs.jsonl`, and the command prints a summary with
 the run count, error rate, and median latency, TTFT and throughput.
 `python -m local_ai_benchmark` works in place of `local-ai-benchmark`.

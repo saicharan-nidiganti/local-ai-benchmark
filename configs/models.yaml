@@ -1,3 +1,5 @@
+# Models known to the project. `--model` accepts an id from this list or any Ollama tag.
+# The three models for the comparison are chosen in issue #23.
 models:
   - id: qwen3-4b
     name: qwen3:4b

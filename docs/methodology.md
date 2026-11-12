@@ -25,6 +25,13 @@ For the first baseline:
 
 This first implementation uses Ollama's generation metadata for token counts and generation duration, while TTFT is measured around the streamed client response.
 
+### Fixed settings
+
+Every request carries the same temperature, output limit, sampling seed and context length,
+taken from `configs/benchmark.yaml` unless a flag overrides them, and every run records them.
+The context length is pinned explicitly because it changes how much memory the model needs,
+and so how much of it fits on the GPU.
+
 ### Failures
 
 A run fails when the request raises (the server is unreachable, the stream breaks) or when
