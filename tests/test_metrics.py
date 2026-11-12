@@ -28,3 +28,26 @@ def test_summarize_error():
     assert result["runs"] == 2
     assert result["successful_runs"] == 1
     assert result["error_rate"] == 0.5
+
+
+def test_summarize_all_runs_failed():
+    result = summarize([{"error": "timeout"}, {"error": "timeout"}])
+
+    assert result == {"runs": 2, "successful_runs": 0, "error_rate": 1.0}
+
+
+def test_summarize_no_runs():
+    assert summarize([]) == {"runs": 0, "successful_runs": 0, "error_rate": 0.0}
+
+
+def test_summarize_ignores_missing_metrics():
+    rows = [
+        {"error": None, "total_latency_ms": 100, "ttft_ms": None, "tokens_per_sec": None},
+        {"error": None, "total_latency_ms": 300, "ttft_ms": 40, "tokens_per_sec": 8},
+    ]
+
+    result = summarize(rows)
+
+    assert result["median_total_latency_ms"] == 200
+    assert result["median_ttft_ms"] == 40
+    assert result["median_tokens_per_sec"] == 8

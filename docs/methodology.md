@@ -2,7 +2,7 @@
 
 ## Phase 1 baseline
 
-The project blueprint requires controlled, repeatable measurements rather than subjective impressions.
+Model performance claims are only useful when they come from controlled, repeatable measurements rather than subjective impressions.
 
 For the first baseline:
 
