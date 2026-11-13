@@ -18,6 +18,12 @@ All notable changes to this project are recorded here. The format follows
   given) as a results folder: quality per task kind and ticket category, speed, GPU share,
   power and energy, run identities, a verdict (most accurate, fastest, best tradeoff) and a
   quality-against-speed chart as SVG ([#25](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/25)).
+  The chart zooms the quality axis to the data, shades the models within the tradeoff margin
+  and moves labels that would overlap.
+- Results: the three-model comparison on the reference laptop. qwen3:4b-instruct and
+  phi4-mini both score 0.89; phi4-mini is the best tradeoff at 34.6 tokens/s against 30.3;
+  llama3.2:3b is the fastest at 53.0 tokens/s and scores 0.81
+  ([#24](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/24)).
 - ADR-0008: the task suite's use case is support-ticket triage: classify category and
   priority, extract fields as JSON, summarize in at most 40 words, all on fictional tickets
   ([#18](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/18)).

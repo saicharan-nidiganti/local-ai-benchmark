@@ -120,3 +120,43 @@ def test_a_report_needs_two_suite_runs(tmp_path):
 def test_missing_values_print_as_not_available():
     assert report._fmt(None) == "n/a"
     assert report._fmt(1234.5, 1) == "1,234.5"
+
+
+def test_labels_of_close_points_do_not_overlap():
+    # the published comparison: two models at the same quality, 5 tokens/s apart
+    points = [(327.4, 62.7, "qwen3:4b-instruct"), (363.7, 65.0, "phi4-mini")]
+
+    (x1, y1, a1), (x2, y2, a2) = report.place_labels(points, (70, 30, 610, 340))
+
+    def box(x, y, anchor, text):
+        w = len(text) * report.CHAR_WIDTH
+        return (x, y - 12, x + w, y + 3) if anchor == "start" else (x - w, y - 12, x, y + 3)
+
+    first, second = box(x1, y1, a1, "qwen3:4b-instruct"), box(x2, y2, a2, "phi4-mini")
+    assert not report._overlaps(first, second)
+
+
+def test_a_label_near_the_right_edge_moves_to_the_left_of_its_point():
+    [(x, _, anchor)] = report.place_labels([(600.0, 200.0, "llama3.2:3b")], (70, 30, 610, 340))
+
+    assert anchor == "end"
+    assert x < 600.0
+
+
+def test_the_quality_axis_zooms_to_the_data_and_ends_at_one():
+    close = [result("a", "a", 0.89, 30.0), result("b", "b", 0.81, 50.0)]
+    spread = [result("a", "a", 0.9, 30.0), result("b", "b", 0.1, 50.0)]
+
+    assert report.quality_axis(close) == (0.7, 1.0, 0.1)
+    assert report.quality_axis(spread) == (0.0, 1.0, 0.25)
+    assert "within 0.05 of the best quality" in report.quality_speed_svg(close)
+
+
+def test_every_report_file_has_unix_line_endings(tmp_path):
+    # the same bytes on Windows and Linux, so a regenerated report shows no spurious diff
+    results = [result("r1", "a", 0.9, 30.0), result("r2", "b", 0.8, 50.0)]
+
+    report.write_report(results, tmp_path, "x")
+
+    for name in ("README.md", "quality_vs_speed.svg", "summaries.json", "manifests.json"):
+        assert b"\r\n" not in (tmp_path / name).read_bytes(), name
