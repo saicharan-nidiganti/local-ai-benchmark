@@ -1,0 +1,32 @@
+{
+  "model": "phi4-mini",
+  "category": "shipping",
+  "priority": "high",
+  "order_id": "ORD-55120",
+  "customer_name": "Lena Ortiz",
+  "product": null,
+  "issue": "parcel stuck in transit for 9 days",
+  "summary": "Order ORD-55120: Parcel stuck in transit for 9 days, tracking page unchanged. Customer requests location check. - Lena Ortiz",
+  "steps": [
+    {
+      "task": "classify",
+      "total_ms": 582.3592000015196,
+      "ttft_ms": 93.75110000109999,
+      "error": null
+    },
+    {
+      "task": "extract",
+      "total_ms": 1405.527399998391,
+      "ttft_ms": 95.33799999917392,
+      "error": null
+    },
+    {
+      "task": "summarize",
+      "total_ms": 875.6448999993154,
+      "ttft_ms": 54.78459999903862,
+      "error": null
+    }
+  ],
+  "total_ms": 2863.5,
+  "errors": []
+}

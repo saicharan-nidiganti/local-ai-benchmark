@@ -1,0 +1,32 @@
+{
+  "model": "phi4-mini",
+  "category": "billing",
+  "priority": "high",
+  "order_id": "INV-7731",
+  "customer_name": "Tomas Weber",
+  "product": "Pro plan",
+  "issue": "charged twice",
+  "summary": "Order INV-7731: Customer Tomas Weber reports being charged twice for his Pro plan and requests a refund for the duplicate charge.",
+  "steps": [
+    {
+      "task": "classify",
+      "total_ms": 578.9790999988327,
+      "ttft_ms": 91.67559999877994,
+      "error": null
+    },
+    {
+      "task": "extract",
+      "total_ms": 1284.9404999997205,
+      "ttft_ms": 93.3232000006683,
+      "error": null
+    },
+    {
+      "task": "summarize",
+      "total_ms": 846.7294000001857,
+      "ttft_ms": 56.43910000071628,
+      "error": null
+    }
+  ],
+  "total_ms": 2710.6,
+  "errors": []
+}

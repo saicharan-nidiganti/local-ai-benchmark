@@ -337,10 +337,10 @@ def serve_command(args: argparse.Namespace) -> None:
     settings, model = resolve(args)
     check_app_runtime(settings, model, args.allow_remote)
     server = web.make_server(model.name, settings.generation, generate, port=args.port)
-    print(f"Loading {model.name}...")
+    print(f"Loading {model.name}...", flush=True)
     generate(model=model.name, prompt="Hello", settings=settings.generation)  # first ticket fast
     print(f"Ticket triage on http://{web.HOST}:{server.server_address[1]} ({model.name}).")
-    print("Only this machine can reach it, and nothing is stored. Ctrl+C stops it.")
+    print("Only this machine can reach it, and nothing is stored. Ctrl+C stops it.", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
