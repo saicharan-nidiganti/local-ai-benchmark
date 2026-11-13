@@ -776,3 +776,23 @@ def test_the_report_judges_each_model_against_the_latency_targets(monkeypatch, t
     model_b_row = next(line for line in latency.splitlines() if line.startswith("| model-b |"))
     assert model_b_row.endswith("| not measured |")  # model-b has no cold benchmark
     assert "Nielsen" in text
+
+
+def test_report_with_cost_assumptions_writes_the_cost_section(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli, "generate", answering_stub)
+    output = tmp_path / "runs.jsonl"
+    suite = two_ticket_suite(tmp_path)
+    run_ids = []
+    for model in ("phi4-mini", "llama3.2:3b"):
+        cli.main(["suite", "--model", model, "--suite", str(suite), "--warmup-runs", "0",
+                  "--output", str(output)])  # fmt: skip
+        run_ids.append(read_jsonl(output)[-1]["run_id"])
+    capsys.readouterr()
+    costs = Path(__file__).resolve().parents[1] / "configs" / "cost.yaml"
+
+    cli.main(["report", "--run-id", run_ids[0], "--run-id", run_ids[1], "--suite", str(suite),
+              "--cost", str(costs), "--out-dir", str(tmp_path / "out"),
+              "--output", str(output)])  # fmt: skip
+
+    assert "## Cost" in (tmp_path / "out" / "README.md").read_text(encoding="utf-8")
+    assert (tmp_path / "out" / "cost.json").is_file()

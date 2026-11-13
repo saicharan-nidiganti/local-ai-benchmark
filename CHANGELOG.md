@@ -19,6 +19,11 @@ All notable changes to this project are recorded here. The format follows
   loaded. `benchmark --cold` unloads the model before every measured run and records
   `start`; `report` judges each model against the targets when it has a cold benchmark
   ([#28](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/28)).
+- Cost: `report --cost configs/cost.yaml` adds local electricity and hardware cost per million
+  output tokens and per 1,000 tasks beside the same model's hosted price; every assumption
+  (Telangana tariff, laptop price and lifetime, exchange rate, hosted prices) is sourced and
+  dated in the file, and `cost.json` holds the figures
+  ([#29](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/29)).
 
 ## [0.2.0] - 2026-11-13
 

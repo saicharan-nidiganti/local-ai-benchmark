@@ -89,6 +89,22 @@ may still be in the operating system's file cache, so this is a cold start of th
 not of the disk; a first start after a reboot is slower. `report` adds the targets table when
 a model has a cold benchmark in the log.
 
+### Cost
+
+`report --cost configs/cost.yaml` prices each suite run's workload, every successful task
+included with its prompt, since reading the prompt is part of what each answer costs:
+
+- **Local electricity** = the run's GPU energy (J) / 3.6 MJ per kWh × the tariff.
+- **Local hardware** = the run's busy time (the sum of task latencies) × the laptop's price per
+  hour of use (price / (lifetime years × 365 × hours a day)).
+- **Hosted** = the same model's API price: the output price per million output tokens, and
+  input plus output tokens per 1,000 tasks, converted at the stated exchange rate.
+
+Each is reported per million output tokens and per 1,000 tasks. Every assumption in
+`configs/cost.yaml` carries its source and the date it was read, and the report lists them.
+The energy is the GPU board's alone, so local electricity is a lower bound; hardware cost
+assumes the laptop does nothing else, so it is an upper bound for a machine already owned.
+
 ### Resource use
 
 While each measured run executes, a background thread samples every 0.5 s
