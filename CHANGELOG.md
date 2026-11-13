@@ -46,6 +46,11 @@ All notable changes to this project are recorded here. The format follows
 
 ### Changed
 
+- README rebuilt around the results: the app beside the verdict, with screenshots for light
+  and dark mode; a numbered "Reproduce the results" guide (models and digests, checks, power and
+  networking, suite and cold starts, the report with cost, what to compare) so the comparison
+  can be reproduced from the README alone; status at six of six phases
+  ([#32](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/32)).
 - README: a Tradeoffs section, local against hosted for privacy, latency and cost, each line
   backed by a measured or cited number, with where local wins and where a hosted model is the
   better choice; status at Phase 4 of 6
