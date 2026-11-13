@@ -96,3 +96,33 @@ def test_the_cpu_model_is_named():
 
 def test_manifests_live_beside_the_run_log():
     assert manifest.manifest_log(Path("data/raw/runs.jsonl")) == Path("data/raw/manifests.jsonl")
+
+
+def test_interfaces_up_lists_routable_interfaces_only(monkeypatch):
+    import socket
+
+    def addr(ip):
+        return SimpleNamespace(family=socket.AF_INET, address=ip)
+
+    monkeypatch.setattr(
+        manifest.psutil,
+        "net_if_stats",
+        lambda: {
+            "Wi-Fi": SimpleNamespace(isup=True),
+            "Ethernet": SimpleNamespace(isup=False),
+            "Loopback": SimpleNamespace(isup=True),
+            "Unplugged": SimpleNamespace(isup=True),
+        },
+    )
+    monkeypatch.setattr(
+        manifest.psutil,
+        "net_if_addrs",
+        lambda: {
+            "Wi-Fi": [addr("192.168.1.4")],
+            "Ethernet": [addr("10.0.0.2")],
+            "Loopback": [addr("127.0.0.1")],
+            "Unplugged": [addr("169.254.10.1")],  # link-local: no network behind it
+        },
+    )
+
+    assert manifest.interfaces_up() == ["Wi-Fi"]

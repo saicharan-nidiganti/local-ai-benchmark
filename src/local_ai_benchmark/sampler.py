@@ -3,6 +3,7 @@ sampled in a background thread."""
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import threading
@@ -14,6 +15,8 @@ from types import TracebackType
 from typing import Any, Protocol
 
 import psutil
+
+from .runtime import is_loopback
 
 MB = 2**20
 
@@ -29,6 +32,7 @@ class Sample:
     runtime_rss_mb: float | None
     gpu_memory_used_mb: float | None
     gpu_power_w: float | None
+    remote_endpoints: frozenset[str] | None = None  # None: the table could not be read
 
 
 class GpuProbe(Protocol):
@@ -91,6 +95,30 @@ def runtime_rss_mb() -> float | None:
     return total / MB if found else None
 
 
+def runtime_pids() -> set[int]:
+    return {
+        proc.pid
+        for proc in psutil.process_iter(["name"])
+        if (proc.info.get("name") or "").lower().startswith(RUNTIME_PROCESS_PREFIXES)
+    }
+
+
+def remote_endpoints() -> frozenset[str] | None:
+    """Open connections from the Ollama server, its model runner or this process to any other
+    machine, as `address:port`. Loopback is this machine; anything else, a LAN address
+    included, is another. None when the connection table cannot be read."""
+    pids = runtime_pids() | {os.getpid()}
+    try:
+        connections = psutil.net_connections(kind="inet")
+    except (psutil.Error, OSError):
+        return None
+    return frozenset(
+        f"{conn.raddr.ip}:{conn.raddr.port}"
+        for conn in connections
+        if conn.pid in pids and conn.raddr and not is_loopback(conn.raddr.ip)
+    )
+
+
 @dataclass(frozen=True)
 class ResourceSummary:
     samples: int
@@ -99,6 +127,7 @@ class ResourceSummary:
     peak_gpu_memory_mb: float | None
     mean_gpu_power_w: float | None
     gpu_energy_j: float | None
+    remote_endpoints: tuple[str, ...] | None = None
 
     def record(self) -> dict[str, Any]:
         def rounded(value: float | None, digits: int = 1) -> float | None:
@@ -111,6 +140,12 @@ class ResourceSummary:
             "peak_gpu_memory_mb": rounded(self.peak_gpu_memory_mb),
             "mean_gpu_power_w": rounded(self.mean_gpu_power_w, 2),
             "gpu_energy_j": rounded(self.gpu_energy_j, 2),
+            "remote_connections": (
+                None if self.remote_endpoints is None else len(self.remote_endpoints)
+            ),
+            "remote_endpoints": (
+                None if self.remote_endpoints is None else list(self.remote_endpoints)
+            ),
         }
 
 
@@ -121,6 +156,7 @@ def summarize_samples(samples: list[Sample], duration_s: float | None) -> Resour
         known = [v for v in values if v is not None]
         return max(known) if known else None
 
+    seen = [s.remote_endpoints for s in samples if s.remote_endpoints is not None]
     powers = [s.gpu_power_w for s in samples if s.gpu_power_w is not None]
     mean_power = fmean(powers) if powers else None
     return ResourceSummary(
@@ -132,6 +168,7 @@ def summarize_samples(samples: list[Sample], duration_s: float | None) -> Resour
         gpu_energy_j=(
             mean_power * duration_s if mean_power is not None and duration_s is not None else None
         ),
+        remote_endpoints=tuple(sorted(frozenset().union(*seen))) if seen else None,
     )
 
 
@@ -144,6 +181,7 @@ class ResourceSampler:
     gpu: GpuProbe = field(default_factory=NvidiaSmi)
     ram: Callable[[], float] = system_ram_used_mb
     rss: Callable[[], float | None] = runtime_rss_mb
+    network: Callable[[], frozenset[str] | None] = remote_endpoints
     samples: list[Sample] = field(default_factory=list)
     _stop: threading.Event = field(default_factory=threading.Event, init=False, repr=False)
     _thread: threading.Thread | None = field(default=None, init=False, repr=False)
@@ -158,6 +196,7 @@ class ResourceSampler:
                 runtime_rss_mb=self.rss(),
                 gpu_memory_used_mb=gpu_memory,
                 gpu_power_w=gpu_power,
+                remote_endpoints=self.network(),
             )
         )
 

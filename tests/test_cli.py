@@ -54,6 +54,12 @@ def on_ac_power(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def local_ollama(monkeypatch):
+    """Every test talks to a local server, whatever OLLAMA_HOST the machine has set."""
+    monkeypatch.delenv("OLLAMA_HOST", raising=False)
+
+
+@pytest.fixture(autouse=True)
 def fixed_manifest(monkeypatch):
     """Skip the real system queries; manifest.py has its own tests."""
     monkeypatch.setattr(
@@ -645,3 +651,56 @@ def test_report_without_a_run_for_a_comparison_model_exits_2(monkeypatch, tmp_pa
 
     assert exit_info.value.code == 2
     assert "no suite run for: model-z" in capsys.readouterr().err
+
+
+def test_a_remote_ollama_host_stops_before_any_request(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("OLLAMA_HOST", "http://192.168.1.20:11434")
+    calls = []
+    monkeypatch.setattr(cli, "generate", lambda **kw: calls.append(kw) or stub_result(**kw))
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["ask", "--model", "m", "--prompt", "p", "--output", str(tmp_path / "r.jsonl")])
+
+    assert exit_info.value.code == 3
+    assert calls == []
+    assert "not this machine" in capsys.readouterr().err
+
+
+def test_allow_remote_runs_against_a_remote_host(monkeypatch, tmp_path):
+    monkeypatch.setenv("OLLAMA_HOST", "http://192.168.1.20:11434")
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+
+    cli.main(["ask", "--model", "m", "--prompt", "p", "--allow-remote",
+              "--output", str(tmp_path / "r.jsonl")])  # fmt: skip
+
+    assert (tmp_path / "r.jsonl").is_file()
+
+
+def test_the_suite_records_and_prints_connections_to_other_machines(monkeypatch, tmp_path, capsys):
+    def leaky(**kwargs):
+        return sampler.ResourceSampler(**kwargs, network=lambda: frozenset({"203.0.113.5:443"}))
+
+    monkeypatch.setattr(cli, "ResourceSampler", leaky)
+    monkeypatch.setattr(cli, "generate", answering_stub)
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["suite", "--model", "m", "--suite", str(two_ticket_suite(tmp_path)),
+              "--warmup-runs", "0", "--output", str(output)])  # fmt: skip
+
+    records = read_jsonl(output)
+    assert {r["remote_connections"] for r in records} == {1}
+    assert records[0]["remote_endpoints"] == ["203.0.113.5:443"]
+    assert f"Network: {len(records)} connection(s) to another machine" in capsys.readouterr().out
+
+
+def test_a_clean_benchmark_says_nothing_left_the_machine(monkeypatch, tmp_path, capsys):
+    def quiet(**kwargs):
+        return sampler.ResourceSampler(**kwargs, network=frozenset)
+
+    monkeypatch.setattr(cli, "ResourceSampler", quiet)
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+
+    cli.main(["benchmark", "--model", "m", "--prompt", "p", "--repeats", "2",
+              "--warmup-runs", "0", "--output", str(tmp_path / "r.jsonl")])  # fmt: skip
+
+    assert "Network: no connection to another machine" in capsys.readouterr().out

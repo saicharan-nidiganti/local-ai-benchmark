@@ -18,6 +18,7 @@ changed decision gets a new ADR that supersedes the old one.
 | [0008](0008-use-case-support-ticket-triage.md) | Use case: support-ticket triage | Accepted |
 | [0009](0009-structured-output-for-json-tasks.md) | Structured output for the JSON tasks | Accepted |
 | [0010](0010-three-models-to-compare.md) | The three models to compare | Accepted |
+| [0011](0011-local-only-runtime-and-connection-audit.md) | A local-only runtime by default, and a connection audit on every run | Accepted |
 
 No decision is open. New ones are tracked as issues labelled `decision`.
 

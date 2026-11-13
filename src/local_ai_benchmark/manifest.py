@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import ipaddress
 import platform
 import shutil
+import socket
 import subprocess
 import sys
 from dataclasses import asdict
@@ -96,6 +98,25 @@ def power() -> dict[str, Any]:
     return {"on_ac": battery.power_plugged, "battery_percent": round(battery.percent)}
 
 
+def interfaces_up() -> list[str]:
+    """Network interfaces that are up with an IPv4 address that is neither loopback nor
+    link-local: the ways data could leave the machine. Virtual adapters (WSL, VMware) appear
+    too; they reach only this machine's guests."""
+    addresses = psutil.net_if_addrs()
+    up = []
+    for name, stats in psutil.net_if_stats().items():
+        if not stats.isup:
+            continue
+        for address in addresses.get(name, []):
+            if address.family != socket.AF_INET:
+                continue
+            ip = ipaddress.ip_address(address.address)
+            if not ip.is_loopback and not ip.is_link_local:
+                up.append(name)
+                break
+    return sorted(up)
+
+
 def collect(run_id: str, server_version: str, model: runtime.ModelDetails) -> Record:
     memory = psutil.virtual_memory()
     return {
@@ -117,7 +138,13 @@ def collect(run_id: str, server_version: str, model: runtime.ModelDetails) -> Re
         "memory_total_gb": round(memory.total / 2**30, 1),
         "gpus": gpus(),
         "power": power(),
-        "runtime": {"name": "ollama", "version": server_version, "host": runtime.host()},
+        "network": {"interfaces_up": interfaces_up()},
+        "runtime": {
+            "name": "ollama",
+            "version": server_version,
+            "host": runtime.host(),
+            "local": runtime.is_local(runtime.host()),
+        },
         "model": {**asdict(model), "capabilities": list(model.capabilities)},
     }
 

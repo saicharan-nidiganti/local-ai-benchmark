@@ -87,9 +87,14 @@ def check_power(require_ac: bool) -> None:
 
 
 def check_runtime(
-    settings: BenchmarkSettings, model: ModelEntry, require_ac: bool = False
+    settings: BenchmarkSettings,
+    model: ModelEntry,
+    require_ac: bool = False,
+    allow_remote: bool = False,
 ) -> preflight.Preflight:
-    """Fail before any request when the server or the model is missing."""
+    """Fail before any request when the server is on another machine, or the server or the
+    model is missing."""
+    preflight.check_host(allow_remote)
     check_power(require_ac)
     checked = preflight.check(model.name, think=settings.generation.think)
     details = checked.model
@@ -147,7 +152,7 @@ def measured_run(
 
 def ask(args: argparse.Namespace) -> None:
     settings, model = resolve(args)
-    checked = check_runtime(settings, model, args.require_ac)
+    checked = check_runtime(settings, model, args.require_ac, args.allow_remote)
     measured = measured_run(model, args.prompt, settings, args)
 
     print("\n--- RESPONSE ---")
@@ -172,7 +177,7 @@ def ask(args: argparse.Namespace) -> None:
 
 def benchmark(args: argparse.Namespace) -> None:
     settings, model = resolve(args)
-    checked = check_runtime(settings, model, args.require_ac)
+    checked = check_runtime(settings, model, args.require_ac, args.allow_remote)
 
     # Warm-up runs are deliberately not included in the measured dataset.
     for i in range(settings.warmup_runs):
@@ -199,10 +204,21 @@ def benchmark(args: argparse.Namespace) -> None:
         append_jsonl(output, record)
         records.append(record)
 
+    summary = run_summary(run_id, records)
     print("\n--- SUMMARY ---")
-    print(json.dumps(run_summary(run_id, records), indent=2))
+    print(json.dumps(summary, indent=2))
+    print_network(summary)
     print(f"\nRaw results: {output}")
     print(f"Summarize it again with: local-ai-benchmark summarize --run-id {run_id}")
+
+
+def print_network(summary: dict[str, Any]) -> None:
+    """One line on whether anything reached another machine during the measured runs."""
+    count = summary.get("remote_connections")
+    if count is None:
+        return
+    found = "no connection" if count == 0 else f"{count} connection(s)"
+    print(f"Network: {found} to another machine during the measured runs")
 
 
 def suite_command(args: argparse.Namespace) -> None:
@@ -213,7 +229,7 @@ def suite_command(args: argparse.Namespace) -> None:
     if unknown:
         raise SuiteError(f"unknown task kind(s): {', '.join(unknown)}")
     tasks = [task for task in suite.tasks() if task.kind in kinds]
-    checked = check_runtime(settings, model, args.require_ac)
+    checked = check_runtime(settings, model, args.require_ac, args.allow_remote)
     print(f"Suite: {suite.name}, {len(tasks)} tasks x {args.repeats}, JSON mode: {args.json_mode}")
 
     # The model is loaded and warmed on the first task; warm-up runs are never recorded.
@@ -255,6 +271,7 @@ def suite_command(args: argparse.Namespace) -> None:
     quality = summary["quality"]
     parts = ", ".join(f"{k} {quality[k]:.2f}" for k in kinds)
     print(f"\nQuality: overall {quality['overall']:.2f} ({parts})")
+    print_network(summary["speed"])
     print(f"Raw results: {output}")
     print(f"Summarize it again with: local-ai-benchmark summarize --run-id {run_id}")
 
@@ -330,6 +347,12 @@ def _common_flags() -> argparse.ArgumentParser:
         "--require-ac",
         action="store_true",
         help="stop instead of warning when the machine is on battery",
+    )
+    network = common.add_argument_group("network")
+    network.add_argument(
+        "--allow-remote",
+        action="store_true",
+        help="allow an OLLAMA_HOST on another machine; prompts and replies then leave this one",
     )
     files = common.add_argument_group("files")
     files.add_argument(

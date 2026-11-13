@@ -203,6 +203,8 @@ One JSON object per line in `data/raw/runs.jsonl`. Version 1, as written today:
 | `peak_gpu_memory_mb` | number or null | MiB | sampler | GPU memory in use, peak (`nvidia-smi`) |
 | `mean_gpu_power_w` | number or null | W | sampler | GPU board power, mean over the samples |
 | `gpu_energy_j` | number or null | J | derived | Mean GPU power times `total_latency_ms` |
+| `remote_connections` | integer or null | count | sampler | Distinct remote ends of connections from Ollama, its runner or the harness to another machine during the run; null when the connection table cannot be read |
+| `remote_endpoints` | list or null | `address:port` | sampler | Those remote ends |
 | `gpu_offload_pct` | number or null | % | Ollama `/api/ps` | Share of the loaded model's memory on the GPU, read after the run |
 | `loaded_context_length` | integer or null | tokens | Ollama `/api/ps` | Context the model was loaded with |
 
@@ -265,17 +267,19 @@ pyproject.toml, uv.lock   package metadata, tool settings, locked dependencies
 with `error` set, keeping a TTFT if text had already arrived. A benchmark therefore always
 completes and reports its error rate (NFR-4). A reply with no visible text is a failure too
 (`empty_response`), with the runtime's token counts kept for diagnosis. Problems that would
-make every run fail are caught before the first one: the preflight checks the server and the
-model. Exit codes: 0 success, 2 configuration error, 3 runtime or model unavailable.
+make every run fail are caught before the first one: the preflight checks that the server is
+on this machine, that it answers, and that the model is pulled. Exit codes: 0 success, 2 configuration error, 3 runtime or model unavailable.
 
 **Reproducibility.** Warm-up exclusion; every generation setting pinned and recorded; a
 run ID on every record; one environment manifest per run ID; every observation kept
 (FR-4, FR-5).
 
-**Privacy.** The harness sends requests only to the Ollama host and sends no telemetry. The
-run log holds full prompts and replies, so it stays git-ignored. Enforcing a local-only host
-is planned ([#27](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/27)). See
-[SECURITY.md](../SECURITY.md).
+**Privacy.** The harness sends requests only to an Ollama server on this machine: the
+preflight refuses any other host unless `--allow-remote` is given, and sends no telemetry.
+The sampler records every connection from Ollama, its runner or the harness to another
+machine during each run, and the manifest records the network interfaces that were up
+([ADR-0011](decisions/0011-local-only-runtime-and-connection-audit.md)). The run log holds
+full prompts and replies, so it stays git-ignored. See [SECURITY.md](../SECURITY.md).
 
 **Testing.** Unit tests replace `ollama.generate` with generators that yield chunks, raise
 errors or stop midway, and replace `cli.generate` with a stub; files go to `tmp_path`.
@@ -292,7 +296,7 @@ recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settin
 | --- | --- | --- |
 | Reproducibility | Pinned and recorded settings; warm-up exclusion; run IDs; environment manifests; raw log kept | |
 | Measurement validity | Client TTFT plus runtime durations; prefill and decode speed; medians with p90 and IQR; thinking disabled; memory, GPU power, energy and GPU share per run | |
-| Privacy | Local runtime only; no telemetry; raw log git-ignored | Local-only host enforced (#27) |
+| Privacy | Local-only host enforced; connections to other machines audited on every run; no telemetry; raw log git-ignored | |
 | Robustness | Failures recorded, never raised; an empty reply is a failure; a preflight fails fast when the server or model is missing | |
 | Testability | Offline tests with simulated streams, a fake GPU probe and a fake sampler; 96% coverage | |
 | Maintainability | src layout, strict typing, Ruff, locked dependencies, ADRs | Protected `main` (#8) |
@@ -317,3 +321,4 @@ recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settin
 | [0008](decisions/0008-use-case-support-ticket-triage.md) | Use case: support-ticket triage |
 | [0009](decisions/0009-structured-output-for-json-tasks.md) | Structured output for the JSON tasks |
 | [0010](decisions/0010-three-models-to-compare.md) | The three models to compare |
+| [0011](decisions/0011-local-only-runtime-and-connection-audit.md) | A local-only runtime by default, and a connection audit on every run |

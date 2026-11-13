@@ -15,18 +15,23 @@ You can expect an acknowledgement within a week.
 
 The project's purpose is to run language models without sending data anywhere.
 
-- **Where requests go.** The harness sends prompts only to the Ollama server it is given,
-  `localhost:11434` by default. It sends no telemetry. Refusing a non-local host unless
-  explicitly allowed is planned
-  ([#27](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/27)).
+- **Where requests go.** The harness sends prompts only to the Ollama server on this
+  machine, `127.0.0.1:11434` by default, and sends no telemetry. An `OLLAMA_HOST` on another
+  machine is refused before any request unless `--allow-remote` is given
+  ([ADR-0011](docs/decisions/0011-local-only-runtime-and-connection-audit.md)).
+- **What is checked.** During every measured run the harness reads the connection table and
+  records any connection from Ollama, its model runner or the harness to another machine
+  (`remote_connections` in each record and summary). The manifest records which network
+  interfaces were up.
 - **What is stored.** Every run, including the full prompt and reply, is appended to
   `data/raw/runs.jsonl` on the local disk. That folder is git-ignored and never published;
   only curated summaries are committed.
 - **What to keep out.** Do not put personal or confidential text in prompts, task suites or
   issues. Treat the raw log like the prompts it contains.
 - **The runtime.** Ollama is a separate program with its own update and network behaviour;
-  see its documentation. Running the suite with networking turned off, to show that nothing
-  depends on the network, is planned in the same issue.
+  see its documentation. Models are downloaded once with `ollama pull`, before any
+  measurement; after that, inference needs no network, which the published networking-off
+  run shows.
 
 ## Dependencies
 

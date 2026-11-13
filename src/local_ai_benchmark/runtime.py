@@ -3,6 +3,7 @@ which models are loaded and where."""
 
 from __future__ import annotations
 
+import ipaddress
 import os
 from dataclasses import dataclass
 from urllib.parse import urlsplit
@@ -28,6 +29,24 @@ def host() -> str:
     if ":" in hostname:
         hostname = f"[{hostname}]"
     return f"{parts.scheme}://{hostname}:{parts.port or 11434}"
+
+
+def is_loopback(address: str) -> bool:
+    """Whether an IP address is this machine's loopback (127.0.0.0/8, ::1, or ::1-mapped)."""
+    try:
+        ip = ipaddress.ip_address(address.split("%")[0])
+    except ValueError:
+        return False
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return ip.is_loopback
+
+
+def is_local(url: str) -> bool:
+    """Whether a base URL points at this machine: `localhost` or a loopback address. Other
+    names are not resolved, because resolving one could itself reach the network."""
+    hostname = (urlsplit(url).hostname or "").lower()
+    return hostname == "localhost" or is_loopback(hostname)
 
 
 def server_version(timeout: float = 5.0) -> str:

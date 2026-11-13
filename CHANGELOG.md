@@ -6,6 +6,15 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Privacy enforced and audited: the preflight refuses an Ollama server on another machine
+  unless `--allow-remote` is given; every measured run records connections from Ollama, its
+  runner or the harness to another machine (`remote_connections`, `remote_endpoints`), and
+  summaries add them up; the manifest records the network interfaces that were up and
+  whether the runtime is local; `report` adds a Privacy section for audited runs. ADR-0011
+  ([#27](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/27)).
+
 ## [0.2.0] - 2026-11-13
 
 ### Added

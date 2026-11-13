@@ -86,8 +86,10 @@ single run hides variance. The harness controls for each:
   limit are held constant and stored with every run.
 - **The environment is recorded.** Each run ID has a manifest: hardware, power state, Ollama
   version, model digest and quantization, harness commit and whether the tree was clean.
-- **Preflight checks run first.** A missing server or model stops the run before any request;
-  running on battery warns, or stops with `--require-ac`.
+- **Preflight checks run first.** A server on another machine, or a missing server or model,
+  stops the run before any request; running on battery warns, or stops with `--require-ac`.
+- **Connections are audited.** Every measured run records any connection from Ollama or the
+  harness to another machine, and the summary says whether there was one.
 - **Raw data is kept.** Every observation is appended to JSONL; nothing is overwritten or
   pre-aggregated, and every summary can be rebuilt from the log.
 - **Summaries are robust.** Medians, which one slow run cannot skew, with p90 and the
@@ -130,8 +132,9 @@ flowchart LR
     rep --> results
 ```
 
-Inference is local: the harness sends requests only to Ollama on localhost, and Phase 4 verifies
-that no traffic leaves the machine ([#27](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/27)).
+Inference is local: the harness refuses an Ollama server on another machine unless
+`--allow-remote` is given, and audits connections during every run
+([ADR-0011](docs/decisions/0011-local-only-runtime-and-connection-audit.md)).
 Context, components, the runtime sequence, the run-record schema and the deployment are in
 [docs/architecture.md](docs/architecture.md).
 
@@ -203,9 +206,9 @@ the summaries and manifests as JSON. `python -m local_ai_benchmark` works in pla
 `--model` takes an Ollama tag or an id from [configs/models.yaml](configs/models.yaml).
 Settings come from [configs/benchmark.yaml](configs/benchmark.yaml); flags override them,
 and every run records the values it used. Measuring commands also take `--require-ac`,
-`--no-sampling` and `--output` (the run log; default `data/raw/runs.jsonl`). Exit codes: 0 done,
-2 a configuration, suite, run-log or report error, 3 a preflight failure (server down, model not
-pulled, or on battery with `--require-ac`). `--help` on any command lists every flag.
+`--allow-remote`, `--no-sampling` and `--output` (the run log; default `data/raw/runs.jsonl`). Exit codes: 0 done,
+2 a configuration, suite, run-log or report error, 3 a preflight failure (server on another machine,
+server down, model not pulled, or on battery with `--require-ac`). `--help` on any command lists every flag.
 
 ## Reproducibility
 

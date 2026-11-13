@@ -153,3 +153,16 @@ def test_select_run_reports_an_unknown_id_and_an_empty_log():
         select_run([bench("r1", 1)], "r9")
     with pytest.raises(RunLogError, match="no benchmark or suite runs"):
         select_run([{"run_type": "single"}], None)
+
+
+def test_the_summary_counts_connections_to_other_machines():
+    rows = [
+        {"total_latency_ms": 10.0, "remote_connections": 0},
+        {"total_latency_ms": 12.0, "remote_connections": 2},
+    ]
+
+    assert summarize(rows)["remote_connections"] == 2
+
+
+def test_runs_from_before_the_connection_audit_keep_their_summary():
+    assert "remote_connections" not in summarize([{"total_latency_ms": 10.0}])

@@ -91,12 +91,16 @@ def spread(values: list[float]) -> dict[str, float]:
 def summarize(records: Iterable[Record]) -> Record:
     rows = list(records)
     successful = [r for r in rows if not r.get("error")]
+    # Older runs predate the connection audit; their summaries stay as they were.
+    audited = [r["remote_connections"] for r in rows if r.get("remote_connections") is not None]
+    network = {"remote_connections": sum(audited)} if audited else {}
 
     if not successful:
         return {
             "runs": len(rows),
             "successful_runs": 0,
             "error_rate": 1.0 if rows else 0.0,
+            **network,
         }
 
     def vals(key: str) -> list[float]:
@@ -115,6 +119,7 @@ def summarize(records: Iterable[Record]) -> Record:
         "median_tokens_per_sec": middle("tokens_per_sec"),
         "median_prefill_tokens_per_sec": middle("prefill_tokens_per_sec"),
         "stats": {key: spread(vals(key)) for key in SUMMARY_METRICS if vals(key)},
+        **network,
     }
 
 

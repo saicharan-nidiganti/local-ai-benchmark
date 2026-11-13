@@ -203,6 +203,40 @@ def quality_speed_svg(results: list[ModelResult]) -> str:
     return "\n".join(parts) + "\n"
 
 
+def privacy_section(results: list[ModelResult]) -> list[str]:
+    """Where each run's requests went and whether anything reached another machine; empty for
+    runs from before the connection audit."""
+    if all(r.summary["speed"].get("remote_connections") is None for r in results):
+        return []
+    lines = [
+        "",
+        "## Privacy",
+        "",
+        "| Model | Runtime | Network interfaces up | Connections to other machines |",
+        "| --- | --- | --- | --- |",
+    ]
+    for r in results:
+        runtime_info = _section(r.manifest, "runtime")
+        network = _section(r.manifest, "network")
+        local = runtime_info.get("local")
+        place = "n/a" if local is None else ("this machine" if local else "another machine")
+        interfaces = network.get("interfaces_up")
+        shown = "n/a" if interfaces is None else (", ".join(interfaces) or "none")
+        count = r.summary["speed"].get("remote_connections")
+        runs = r.summary["speed"].get("runs")
+        lines.append(
+            f"| {r.model} | {place} | {shown} | "
+            f"{'n/a' if count is None else f'{count} in {runs} runs'} |"
+        )
+    lines += [
+        "",
+        "Connections are read from the connection table every sample (0.5 s) for the Ollama "
+        "server, its model runner and the harness; loopback is this machine, anything else "
+        "counts.",
+    ]
+    return lines
+
+
 def render_markdown(results: list[ModelResult], title: str, chart_name: str) -> str:
     v = verdict(results)
     first = results[0].summary
@@ -271,6 +305,7 @@ def render_markdown(results: list[ModelResult], title: str, chart_name: str) -> 
     for r in results:
         cells = " | ".join(_fmt(r.latency_by_task.get(k), 0) for k in TASK_KINDS)
         lines.append(f"| {r.model} | {cells} |")
+    lines += privacy_section(results)
     lines += [
         "",
         "## Runs",

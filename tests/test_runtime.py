@@ -108,3 +108,26 @@ def test_loaded_model_reports_the_gpu_share(monkeypatch):
 
 def test_gpu_share_is_unknown_for_an_empty_size():
     assert runtime.LoadedModel("m", 0, 0, None).gpu_share is None
+
+
+@pytest.mark.parametrize(
+    ("url", "local"),
+    [
+        ("http://127.0.0.1:11434", True),
+        ("http://localhost:11434", True),
+        ("http://127.20.0.1:11434", True),
+        ("http://[::1]:11434", True),
+        ("http://[::ffff:127.0.0.1]:11434", True),
+        ("http://192.168.1.20:11434", False),  # another machine on the LAN is not this one
+        ("http://gpu-box:11434", False),  # names are not resolved
+        ("https://example.org:11434", False),
+    ],
+)
+def test_only_loopback_counts_as_this_machine(url, local):
+    assert runtime.is_local(url) is local
+
+
+def test_a_bind_all_ollama_host_is_this_machine(monkeypatch):
+    monkeypatch.setenv("OLLAMA_HOST", "0.0.0.0:11434")
+
+    assert runtime.is_local(runtime.host())
