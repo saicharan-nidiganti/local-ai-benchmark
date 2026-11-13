@@ -32,12 +32,16 @@ automatically, once per run ID, to `data/raw/manifests.jsonl`
 | --- | --- | --- | --- | --- | --- |
 | `qwen3:4b` | `359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7` | GGUF | 4.0B | Q4_K_M | 2.5 GB |
 | `llama3.2:3b` | `a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72` | GGUF | 3.2B | Q4_K_M | 2.0 GB |
+| `qwen3:4b-instruct` | `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0` | GGUF | 4.0B | Q4_K_M | 2.5 GB |
+| `phi4-mini` | `78fad5d182a7c33065e153a5f8ba210754207ba9d91973f57dffa7f487363753` | GGUF | 3.8B | Q4_K_M | 2.5 GB |
+| `gemma3:4b` | `68ceab7e468a31c988b44d5a4984a0e21f58c4f7158c6ce29c1804babac38df7` | GGUF | 3.9B | Q4_K_M | 3.3 GB |
 
-Capabilities as Ollama reports them: qwen3:4b `completion, tools, thinking`; llama3.2:3b
-`completion, tools`.
+Capabilities as Ollama reports them: qwen3:4b and qwen3:4b-instruct `completion, tools,
+thinking`; llama3.2:3b and phi4-mini `completion, tools`; gemma3:4b `completion, vision`. The
+plain `qwen3:4b` tag is a thinking build; `qwen3:4b-instruct` is its instruct twin.
 
-The three models for the comparison are chosen in
-[#23](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/23).
+The comparison uses qwen3:4b-instruct, phi4-mini and llama3.2:3b
+([ADR-0010](decisions/0010-three-models-to-compare.md)).
 
 ## First live run
 

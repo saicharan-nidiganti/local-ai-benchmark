@@ -315,3 +315,4 @@ recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settin
 | [0007](decisions/0007-run-identity-and-manifests.md) | Run identity and environment manifests |
 | [0008](decisions/0008-use-case-support-ticket-triage.md) | Use case: support-ticket triage |
 | [0009](decisions/0009-structured-output-for-json-tasks.md) | Structured output for the JSON tasks |
+| [0010](decisions/0010-three-models-to-compare.md) | The three models to compare |
