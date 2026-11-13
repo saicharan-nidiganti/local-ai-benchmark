@@ -8,6 +8,9 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
+- A warning before the first request when the machine is on battery, and `--require-ac` to
+  stop instead; on battery the GPU may be throttled and results are not comparable
+  ([#54](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/54)).
 - ADR-0010: the comparison uses qwen3:4b-instruct, phi4-mini and llama3.2:3b, chosen from a
   screening of five models on the reference GPU; the registry and the environment list them
   with their digests ([#23](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/23)).

@@ -79,6 +79,11 @@ model runner, and GPU memory and board power from `nvidia-smi`. A run records th
 mean GPU power, and GPU energy as mean power times the run's total latency. After the run,
 Ollama reports how much of the loaded model sits in GPU memory (`gpu_offload_pct`).
 
+Measure plugged in. On battery the GPU may be throttled and the charge falls during a run,
+so every measuring command warns before its first request when the machine reports it is on
+battery, and `--require-ac` turns the warning into an error. The manifest records the power
+state either way.
+
 Limits: the energy figure covers the GPU board only, not the CPU, memory or screen; and a run
 shorter than the interval gets only its start and end samples. GPU fields are empty on a
 machine without an NVIDIA driver. `--no-sampling` skips sampling entirely.
