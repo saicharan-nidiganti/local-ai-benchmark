@@ -71,7 +71,8 @@ commit `pyproject.toml` and `uv.lock` together.
 Issues labelled `experiment` produce measurements.
 
 - Measure on the reference machine ([docs/environment.md](docs/environment.md)), plugged in
-  and idle, and record the run ID and manifest with the results.
+  and idle, and record the run ID and manifest with the results. Pass `--require-ac` so a run
+  on battery stops instead of producing numbers that cannot be compared.
 - The raw log (`data/raw/`) never enters git: it holds full prompts and replies. Commit only
   curated summaries and reports.
 - Never put personal or confidential text in a prompt suite.

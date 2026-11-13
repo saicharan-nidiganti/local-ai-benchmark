@@ -48,6 +48,12 @@ def fake_resources(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def on_ac_power(monkeypatch):
+    """Every test runs as if plugged in, whatever the machine running the tests reports."""
+    monkeypatch.setattr(cli.manifest, "power", lambda: {"on_ac": True, "battery_percent": 100})
+
+
+@pytest.fixture(autouse=True)
 def fixed_manifest(monkeypatch):
     """Skip the real system queries; manifest.py has its own tests."""
     monkeypatch.setattr(
@@ -284,6 +290,41 @@ def test_the_preflight_result_is_printed(monkeypatch, tmp_path, capsys):
     cli.main(["ask", "--model", "m", "--prompt", "p", "--output", str(tmp_path / "r.jsonl")])
 
     assert "Ollama 0.40.16" in capsys.readouterr().out
+
+
+def test_running_on_battery_warns_before_any_request(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli.manifest, "power", lambda: {"on_ac": False, "battery_percent": 82})
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+
+    cli.main(["ask", "--model", "m", "--prompt", "p", "--output", str(tmp_path / "r.jsonl")])
+
+    err = capsys.readouterr().err
+    assert "Warning: running on battery (82%)" in err
+    assert (tmp_path / "r.jsonl").is_file()  # the run still happens
+
+
+def test_require_ac_stops_a_run_on_battery(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli.manifest, "power", lambda: {"on_ac": False, "battery_percent": 40})
+    calls = []
+    monkeypatch.setattr(cli, "generate", lambda **kw: calls.append(kw) or stub_result(**kw))
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["benchmark", "--model", "m", "--prompt", "p", "--require-ac",
+                  "--output", str(tmp_path / "r.jsonl")])  # fmt: skip
+
+    assert exit_info.value.code == 3
+    assert calls == []
+    assert "Plug in, or drop --require-ac" in capsys.readouterr().err
+
+
+def test_a_machine_without_a_battery_is_not_warned(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli.manifest, "power", lambda: {"on_ac": None, "battery_percent": None})
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+
+    cli.main(["ask", "--model", "m", "--prompt", "p", "--require-ac",
+              "--output", str(tmp_path / "r.jsonl")])  # fmt: skip
+
+    assert "battery" not in capsys.readouterr().err
 
 
 def test_version_flag(capsys):

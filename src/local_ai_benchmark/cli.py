@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -70,8 +71,26 @@ def run_fields(settings: BenchmarkSettings, model: ModelEntry) -> dict[str, Any]
     return {"model_id": model.id, **settings.generation.record()}
 
 
-def check_runtime(settings: BenchmarkSettings, model: ModelEntry) -> preflight.Preflight:
+def check_power(require_ac: bool) -> None:
+    """Warn, or with --require-ac stop, when the machine is on battery: the GPU may be
+    throttled and the charge falls during a run, so speed and energy are not comparable."""
+    state = manifest.power()
+    if state["on_ac"] is not False:
+        return  # on AC, or a machine without a battery
+    message = (
+        f"running on battery ({state['battery_percent']}%): speed, power and energy are not "
+        "comparable with runs on AC"
+    )
+    if require_ac:
+        raise preflight.PreflightError(f"{message}. Plug in, or drop --require-ac.")
+    print(f"Warning: {message}.", file=sys.stderr)
+
+
+def check_runtime(
+    settings: BenchmarkSettings, model: ModelEntry, require_ac: bool = False
+) -> preflight.Preflight:
     """Fail before any request when the server or the model is missing."""
+    check_power(require_ac)
     checked = preflight.check(model.name, think=settings.generation.think)
     details = checked.model
     print(
@@ -128,7 +147,7 @@ def measured_run(
 
 def ask(args: argparse.Namespace) -> None:
     settings, model = resolve(args)
-    checked = check_runtime(settings, model)
+    checked = check_runtime(settings, model, args.require_ac)
     measured = measured_run(model, args.prompt, settings, args)
 
     print("\n--- RESPONSE ---")
@@ -153,7 +172,7 @@ def ask(args: argparse.Namespace) -> None:
 
 def benchmark(args: argparse.Namespace) -> None:
     settings, model = resolve(args)
-    checked = check_runtime(settings, model)
+    checked = check_runtime(settings, model, args.require_ac)
 
     # Warm-up runs are deliberately not included in the measured dataset.
     for i in range(settings.warmup_runs):
@@ -194,7 +213,7 @@ def suite_command(args: argparse.Namespace) -> None:
     if unknown:
         raise SuiteError(f"unknown task kind(s): {', '.join(unknown)}")
     tasks = [task for task in suite.tasks() if task.kind in kinds]
-    checked = check_runtime(settings, model)
+    checked = check_runtime(settings, model, args.require_ac)
     print(f"Suite: {suite.name}, {len(tasks)} tasks x {args.repeats}, JSON mode: {args.json_mode}")
 
     # The model is loaded and warmed on the first task; warm-up runs are never recorded.
@@ -307,6 +326,11 @@ def _common_flags() -> argparse.ArgumentParser:
         help="seconds between RAM, VRAM and power samples during a run (default: 0.5)",
     )
     measure.add_argument("--no-sampling", action="store_true", help="do not sample resource use")
+    measure.add_argument(
+        "--require-ac",
+        action="store_true",
+        help="stop instead of warning when the machine is on battery",
+    )
     files = common.add_argument_group("files")
     files.add_argument(
         "--config", type=Path, help="settings file (default: configs/benchmark.yaml)"
