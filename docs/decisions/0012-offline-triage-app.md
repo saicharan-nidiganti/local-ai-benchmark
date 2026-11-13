@@ -33,7 +33,8 @@ networking off and keep the tickets on the machine.
 ## Decision
 
 - **One core, `app.triage`**: the suite's three prompts in its order (classify, extract,
-  summarize), the JSON tasks constrained to the same pydantic schemas through Ollama's
+  summarize), classification with the `rubric` variant since #74 (phi4-mini's priorities from
+  8 to 14 of 15 right; [results](../../results/2026-11-13-priority-rubric/)), the JSON tasks constrained to the same pydantic schemas through Ollama's
   structured output ([ADR-0009](0009-structured-output-for-json-tasks.md)), the pinned
   generation settings, and phi4-mini unless `--model` says otherwise. A failed or malformed
   reply is reported beside the answers that did arrive. Tickets over 4,000 characters are

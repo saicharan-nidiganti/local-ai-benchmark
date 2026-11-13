@@ -133,8 +133,9 @@ the tariff and the exchange rate are sourced and dated in
 
 Support-ticket triage on phi4-mini, the comparison's best tradeoff, entirely on this machine:
 the category and priority, the order number, customer, product and issue, and a summary of
-at most 40 words. It asks the model exactly what the suite measured, the same prompts and
-JSON schemas, so the quality, speed and cost above describe it
+at most 40 words. It asks the model what the suite measured, the same JSON schemas and
+prompts, with the [priority rubric](results/2026-11-13-priority-rubric/) for classification,
+so the quality, speed and cost above describe it
 ([ADR-0012](docs/decisions/0012-offline-triage-app.md)).
 
 <p align="center">
@@ -156,8 +157,9 @@ uv run local-ai-benchmark triage ticket.txt --json
 - **Keeps nothing:** no log of tickets or answers, no file. The page listens on 127.0.0.1
   only, answers only requests addressed to `localhost`, refuses other origins, and loads
   nothing from elsewhere.
-- **Knows its limits:** like every model measured, it tends to rate priority one level too
-  high; read the priority as a suggestion.
+- **Knows its limits:** with the rubric, phi4-mini rated 14 of the suite's 15 priorities right,
+  up from 8. The rubric's rules were drawn from those same tickets, so read the priority as a
+  suggestion.
 
 ## Why the numbers can be trusted
 
