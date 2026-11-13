@@ -1,6 +1,6 @@
 [project]
 name = "local-ai-benchmark"
-version = "0.2.0"
+version = "1.0.0"
 description = "Offline small-language-model app and reproducible benchmark for models served by Ollama"
 readme = "README.md"
 license = "MIT"
@@ -9,7 +9,7 @@ authors = [{ name = "SaiCharan Nidiganti" }]
 requires-python = ">=3.11"
 keywords = ["llm", "slm", "ollama", "benchmark", "local-llm", "inference"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
