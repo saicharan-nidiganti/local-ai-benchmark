@@ -12,7 +12,7 @@ from typing import Any
 import httpx
 import ollama
 
-from . import __version__, cost, manifest, preflight, report, runtime, scorers
+from . import __version__, app, cost, manifest, preflight, report, runtime, scorers, web
 from .config import (
     BenchmarkSettings,
     ConfigError,
@@ -302,6 +302,53 @@ def latest_suite_runs(records: list[dict[str, Any]], models: list[ModelEntry]) -
     return [latest[m.name] for m in chosen]
 
 
+def check_app_runtime(settings: BenchmarkSettings, model: ModelEntry, allow_remote: bool) -> None:
+    """The app's preflight: the server is on this machine, it answers, the model is pulled."""
+    preflight.check_host(allow_remote)
+    preflight.check(model.name, think=settings.generation.think)
+
+
+def read_ticket(args: argparse.Namespace) -> str:
+    if args.text is not None:
+        return str(args.text)
+    if args.ticket == "-":
+        return sys.stdin.read()
+    try:
+        return Path(args.ticket).read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ConfigError(f"{args.ticket}: cannot read the ticket ({exc.strerror})") from exc
+
+
+def triage_command(args: argparse.Namespace) -> None:
+    settings, model = resolve(args)
+    ticket = read_ticket(args)
+    check_app_runtime(settings, model, args.allow_remote)
+    try:
+        result = app.triage(ticket, model.name, settings.generation, generate)
+    except app.TriageError as exc:
+        raise ConfigError(str(exc)) from exc
+    if args.json:
+        print(json.dumps(result.record(), indent=2, ensure_ascii=False))
+    else:
+        print(app.render_text(result))
+
+
+def serve_command(args: argparse.Namespace) -> None:
+    settings, model = resolve(args)
+    check_app_runtime(settings, model, args.allow_remote)
+    server = web.make_server(model.name, settings.generation, generate, port=args.port)
+    print(f"Loading {model.name}...")
+    generate(model=model.name, prompt="Hello", settings=settings.generation)  # first ticket fast
+    print(f"Ticket triage on http://{web.HOST}:{server.server_address[1]} ({model.name}).")
+    print("Only this machine can reach it, and nothing is stored. Ctrl+C stops it.")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("Stopped.")
+    finally:
+        server.server_close()
+
+
 def latest_cold_start(records: list[dict[str, Any]], model: str) -> dict[str, Any] | None:
     """The summary of the model's latest cold benchmark in the log, if it has one."""
     cold = [
@@ -352,7 +399,8 @@ def summarize_command(args: argparse.Namespace) -> None:
     print(json.dumps(summary_of(run_id, selected), indent=2))
 
 
-def _common_flags() -> argparse.ArgumentParser:
+def _common_flags(measuring: bool = True) -> argparse.ArgumentParser:
+    """Flags shared by the commands; the app's commands take no sampling or run-log flags."""
     common = argparse.ArgumentParser(add_help=False)
     gen = common.add_argument_group("generation settings (override configs/benchmark.yaml)")
     gen.add_argument("--temperature", type=float)
@@ -365,6 +413,25 @@ def _common_flags() -> argparse.ArgumentParser:
         action=argparse.BooleanOptionalAction,
         help="let a thinking model reason before it answers (default: off)",
     )
+    if measuring:
+        _measurement_flags(common)
+    network = common.add_argument_group("network")
+    network.add_argument(
+        "--allow-remote",
+        action="store_true",
+        help="allow an OLLAMA_HOST on another machine; prompts and replies then leave this one",
+    )
+    files = common.add_argument_group("files")
+    files.add_argument(
+        "--config", type=Path, help="settings file (default: configs/benchmark.yaml)"
+    )
+    files.add_argument("--models", type=Path, help="model registry (default: configs/models.yaml)")
+    if measuring:
+        files.add_argument("--output", type=Path, help=OUTPUT_HELP)
+    return common
+
+
+def _measurement_flags(common: argparse.ArgumentParser) -> None:
     measure = common.add_argument_group("resource sampling")
     measure.add_argument(
         "--sample-interval",
@@ -378,19 +445,6 @@ def _common_flags() -> argparse.ArgumentParser:
         action="store_true",
         help="stop instead of warning when the machine is on battery",
     )
-    network = common.add_argument_group("network")
-    network.add_argument(
-        "--allow-remote",
-        action="store_true",
-        help="allow an OLLAMA_HOST on another machine; prompts and replies then leave this one",
-    )
-    files = common.add_argument_group("files")
-    files.add_argument(
-        "--config", type=Path, help="settings file (default: configs/benchmark.yaml)"
-    )
-    files.add_argument("--models", type=Path, help="model registry (default: configs/models.yaml)")
-    files.add_argument("--output", type=Path, help=OUTPUT_HELP)
-    return common
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -446,6 +500,29 @@ def build_parser() -> argparse.ArgumentParser:
         "--warmup-runs", type=int, help="unrecorded runs of the first task first (default: 1)"
     )
     p_suite.set_defaults(func=suite_command)
+
+    app_flags = _common_flags(measuring=False)
+    app_model_help = f"{model_help} (default: {app.RECOMMENDED_MODEL}, the comparison's pick)"
+    p_tri = sub.add_parser(
+        "triage", parents=[app_flags], help="triage one support ticket offline (the app)"
+    )
+    p_tri.add_argument(
+        "ticket",
+        nargs="?",
+        default="-",
+        help="a text file holding the ticket, or - to read it from standard input (default)",
+    )
+    p_tri.add_argument("--text", help="the ticket itself, instead of a file")
+    p_tri.add_argument("--model", default=app.RECOMMENDED_MODEL, help=app_model_help)
+    p_tri.add_argument("--json", action="store_true", help="print the answer as JSON")
+    p_tri.set_defaults(func=triage_command)
+
+    p_srv = sub.add_parser(
+        "serve", parents=[app_flags], help="the app as a web page on http://127.0.0.1"
+    )
+    p_srv.add_argument("--port", type=int, default=web.DEFAULT_PORT, help="default: 8765")
+    p_srv.add_argument("--model", default=app.RECOMMENDED_MODEL, help=app_model_help)
+    p_srv.set_defaults(func=serve_command)
 
     p_rep = sub.add_parser(
         "report", help="compare suite runs of several models as a results folder"

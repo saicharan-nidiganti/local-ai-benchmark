@@ -2,9 +2,8 @@
 
 Last updated: 2026-11-13 · Applies to: `main` after Phase 0
 
-This document describes how local-ai-benchmark is built today and how it grows through the
-[roadmap](roadmap.md). Parts that do not exist yet are marked **planned**, with the phase and
-issue that add them; their module names are provisional. Requirement IDs (FR-*, NFR-*) refer
+This document describes how local-ai-benchmark is built: the harness that measures the
+models, and the offline app that runs the recommended one ([roadmap](roadmap.md)). Requirement IDs (FR-*, NFR-*) refer
 to [requirements.md](requirements.md); decisions are recorded in [decisions/](decisions/).
 
 ## 1. Context
@@ -52,7 +51,7 @@ flowchart LR
 flowchart TB
     subgraph pkg["Package: src/local_ai_benchmark"]
         direction TB
-        cli["cli.py<br/>parses arguments,<br/>runs ask and benchmark"]
+        cli["cli.py<br/>parses arguments,<br/>runs every command"]
         inference["inference.py<br/>streams one generation,<br/>times it, never raises"]
         metrics["metrics.py<br/>run log, run IDs,<br/>order statistics"]
         config["config.py<br/>settings and model registry,<br/>flags override files"]
@@ -62,7 +61,8 @@ flowchart TB
         sampler["sampler.py<br/>RAM, VRAM and GPU power<br/>during each run"]
         suite["suite.py, scorers.py<br/>tasks and scoring"]
         report["report.py<br/>comparison report,<br/>chart and verdict"]
-        app["app.py<br/>offline application<br/>Phase 5 · #31"]:::planned
+        app["app.py<br/>triage one ticket:<br/>labels, fields, summary"]
+        web["web.py<br/>local web page,<br/>127.0.0.1 only"]
     end
     ollama[("Ollama server")]
     log[("runs.jsonl")]
@@ -79,11 +79,14 @@ flowchart TB
     cli --> sampler
     cli --> manifest
     report --> log
-    app -.-> inference
-    classDef planned stroke-dasharray: 5 3
+    cli --> app
+    cli --> web
+    web --> app
+    app --> inference
+    app --> suite
 ```
 
-Solid boxes and arrows exist today; dashed ones are planned.
+Every box and arrow exists.
 
 | Module | Responsibility | Public interface | Depends on |
 | --- | --- | --- | --- |
@@ -98,13 +101,15 @@ Solid boxes and arrows exist today; dashed ones are planned.
 | `suite.py` | Load and validate a suite file (pydantic: label sets, required keys, duplicate ids); expand each ticket into classify, extract and summarize tasks with the versioned prompts | `load_suite(path) -> Suite`, `Suite.tasks()`, `Task.prompt`, `SuiteError` | pydantic |
 | `scorers.py` | Score a reply from 0 to 1 for its task kind: label match, field accuracy, summary facts and length; judge JSON as strict, recovered or invalid, and schema-valid against pydantic models | `score(task, reply) -> Score`, `parse_json_object`, `normalize` | `suite`, pydantic |
 | `report.py` | Compare suite runs of several models: quality overall, per task kind and per ticket category; speed, GPU share, power and energy; the run identities; a verdict (most accurate, fastest, best tradeoff); and a quality-against-speed chart as SVG | `model_result(run_id, records, suite, manifest)`, `verdict(results)`, `write_report(results, out_dir, title)` | `metrics`, `suite` |
+| `app.py` | The offline app's core: one ticket in; category, priority, order number, customer, product, issue and summary out, from the suite's prompts and schemas on the recommended model (phi4-mini); keeps nothing | `triage(ticket, model, settings, generate)`, `render_text(result)`, `RECOMMENDED_MODEL` | `suite`, `scorers`, `inference` |
+| `web.py` | The app as a web page on the standard library: 127.0.0.1 only, `Host` and `Origin` checked, a 16 KB body cap, a Content-Security-Policy that loads nothing from elsewhere, one ticket at a time; the page itself is `static/triage.html` | `make_server(model, settings, generate, port)` | `app` |
 | `cost.py` | Cost of a suite run's workload per million output tokens and per 1,000 tasks: GPU electricity and hardware amortization against the same model's hosted price, from sourced assumptions | `load_cost(path)`, `cost_of(records, model, assumptions)` | `config`, `metrics` |
 | `targets.py` | The latency targets for interactive use, each with its limit, unit and cited reason | `TARGETS`, `Target.met(value)` | none |
 | `paths.py` | Locate the project folder (`LOCAL_AI_BENCHMARK_HOME`, else the source checkout, else the working folder) and the default run log in it | `project_root()`, `default_run_log()` | standard library |
 
 Dependency rules: no module imports `cli`; only `inference` (generation) and `runtime`
-(everything else) talk to Ollama; only `metrics` writes the run log. Planned modules keep the same direction: the CLI
-composes, the lower modules do one job each.
+(everything else) talk to Ollama; only `metrics` writes the run log; the app (`app`, `web`) writes nothing. The CLI
+composes; the lower modules do one job each.
 
 ## 4. Runtime view
 
@@ -295,15 +300,15 @@ recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settin
 
 ## 9. Quality attributes
 
-| Attribute | How the design addresses it today | Planned |
-| --- | --- | --- |
-| Reproducibility | Pinned and recorded settings; warm-up exclusion; run IDs; environment manifests; raw log kept | |
-| Measurement validity | Client TTFT plus runtime durations; prefill and decode speed; medians with p90 and IQR; thinking disabled; memory, GPU power, energy and GPU share per run | |
-| Privacy | Local-only host enforced; connections to other machines audited on every run; no telemetry; raw log git-ignored | |
-| Robustness | Failures recorded, never raised; an empty reply is a failure; a preflight fails fast when the server or model is missing | |
-| Testability | Offline tests with simulated streams, a fake GPU probe and a fake sampler; 96% coverage | |
-| Maintainability | src layout, strict typing, Ruff, locked dependencies, ADRs | Protected `main` (#8) |
-| Portability | Windows and Linux in CI | |
+| Attribute | How the design addresses it |
+| --- | --- |
+| Reproducibility | Pinned and recorded settings; warm-up exclusion; run IDs; environment manifests; raw log kept |
+| Measurement validity | Client TTFT plus runtime durations; prefill and decode speed; medians with p90 and IQR; thinking disabled; memory, GPU power, energy and GPU share per run; cold starts measured apart |
+| Privacy | Local-only host enforced; connections to other machines audited on every run; no telemetry; raw log git-ignored; the app keeps nothing and its page is reachable from this machine only |
+| Robustness | Failures recorded, never raised; an empty reply is a failure; a preflight fails fast when the server is remote or the server or model is missing |
+| Testability | Offline tests with simulated streams, a fake GPU probe, a fake sampler and a fake model behind the web page; 97% coverage |
+| Maintainability | src layout, strict typing, Ruff, locked dependencies, ADRs, protected `main` with seven required checks |
+| Portability | Windows and Linux in CI; the app needs only Python's standard library and a browser |
 
 ## 10. Known limitations
 
@@ -325,3 +330,4 @@ recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settin
 | [0009](decisions/0009-structured-output-for-json-tasks.md) | Structured output for the JSON tasks |
 | [0010](decisions/0010-three-models-to-compare.md) | The three models to compare |
 | [0011](decisions/0011-local-only-runtime-and-connection-audit.md) | A local-only runtime by default, and a connection audit on every run |
+| [0012](decisions/0012-offline-triage-app.md) | The offline app: a triage command and a local web page |

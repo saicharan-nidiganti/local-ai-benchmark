@@ -8,6 +8,12 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
+- The offline app: `triage` answers one support ticket with its category, priority, order
+  number, customer, product, issue and a summary, on phi4-mini (the comparison's best
+  tradeoff) with the suite's prompts and schemas; `serve` offers the same as a web page on
+  http://127.0.0.1:8765, on the standard library alone, loopback only, with Host and Origin
+  checks, a body cap and a Content-Security-Policy. Neither keeps tickets or answers.
+  ADR-0012 ([#31](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/31)).
 - Privacy enforced and audited: the preflight refuses an Ollama server on another machine
   unless `--allow-remote` is given; every measured run records connections from Ollama, its
   runner or the harness to another machine (`remote_connections`, `remote_endpoints`), and
