@@ -131,3 +131,23 @@ def test_a_bind_all_ollama_host_is_this_machine(monkeypatch):
     monkeypatch.setenv("OLLAMA_HOST", "0.0.0.0:11434")
 
     assert runtime.is_local(runtime.host())
+
+
+def test_unload_waits_until_the_model_is_no_longer_loaded(monkeypatch):
+    calls = []
+    loaded = [True, True, False]
+    monkeypatch.setattr(runtime.ollama, "generate", lambda **kw: calls.append(kw))
+    monkeypatch.setattr(runtime, "loaded_model", lambda name: object() if loaded.pop(0) else None)
+
+    runtime.unload("phi4-mini", poll_s=0)
+
+    assert calls == [{"model": "phi4-mini", "prompt": "", "keep_alive": 0}]
+    assert loaded == []
+
+
+def test_unload_gives_up_after_its_timeout(monkeypatch):
+    monkeypatch.setattr(runtime.ollama, "generate", lambda **kw: None)
+    monkeypatch.setattr(runtime, "loaded_model", lambda name: object())
+
+    with pytest.raises(TimeoutError, match="still loaded"):
+        runtime.unload("phi4-mini", timeout_s=0, poll_s=0)

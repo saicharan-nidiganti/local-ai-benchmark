@@ -14,6 +14,11 @@ All notable changes to this project are recorded here. The format follows
   summaries add them up; the manifest records the network interfaces that were up and
   whether the runtime is local; `report` adds a Privacy section for audited runs. ADR-0011
   ([#27](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/27)).
+- Latency targets for interactive use, each with a cited reason: first token within 1 s with
+  the model loaded, decode at 10 tokens/s or more, first token within 10 s with it not
+  loaded. `benchmark --cold` unloads the model before every measured run and records
+  `start`; `report` judges each model against the targets when it has a cold benchmark
+  ([#28](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/28)).
 
 ## [0.2.0] - 2026-11-13
 

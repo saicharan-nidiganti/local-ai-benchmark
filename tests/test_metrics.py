@@ -166,3 +166,10 @@ def test_the_summary_counts_connections_to_other_machines():
 
 def test_runs_from_before_the_connection_audit_keep_their_summary():
     assert "remote_connections" not in summarize([{"total_latency_ms": 10.0}])
+
+
+def test_a_run_summary_names_how_the_run_started():
+    rows = [{"model": "m", "start": "cold", "total_latency_ms": 10.0}]
+
+    assert run_summary("r", rows)["start"] == "cold"
+    assert "start" not in run_summary("r", [{"model": "m", "total_latency_ms": 10.0}])
