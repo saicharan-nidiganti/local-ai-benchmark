@@ -323,7 +323,7 @@ repetitions. Each run's manifest records them.
 | --- | --- |
 | `ask` | One prompt, one measured run, its metrics printed |
 | `benchmark` | One prompt, warm-up runs, then repeated measured runs and their summary; `--cold` unloads the model before every run |
-| `suite` | Every task of a suite (or one kind with `--tasks`), each reply scored |
+| `suite` | Every task of a suite (or one kind with `--tasks`), each reply scored; `--json-mode prompt` asks for JSON in the prompt alone, `--repair 1` or `2` re-asks a reply that fails its schema |
 | `report` | The latest suite run of each comparison model, or the `--run-id`s given, as a results folder; adds latency targets when a model has a cold benchmark, and cost with `--cost configs/cost.yaml` |
 | `summarize` | Rebuilds the summary of any run ID from the log; `--list` lists them |
 | `triage` | The app: one ticket's category, priority, order number, customer, product, issue and summary, on phi4-mini unless `--model` says otherwise; `--json` for scripts |

@@ -167,8 +167,26 @@ def suite_summary(run_id: str, records: list[Record]) -> Record:
             "strict_rate": _rate(structured, "json_strict"),
             "valid_rate": _rate(structured, "json_valid"),
             "schema_valid_rate": _rate(structured, "schema_valid"),
+            **_repairs(structured),
         },
         "speed": summarize(records),
+    }
+
+
+def _repairs(structured: list[Record]) -> Record:
+    """First-attempt validity and what bounded repair added; empty for runs without repair."""
+    tried = [r for r in structured if r.get("repair_attempts") is not None]
+    if not tried:
+        return {}
+    attempts = [int(r["repair_attempts"]) for r in tried]
+    return {
+        "first_attempt_valid_rate": _rate(tried, "first_json_valid"),
+        "first_attempt_schema_valid_rate": _rate(tried, "first_schema_valid"),
+        "repair_rate": sum(1 for a in attempts if a > 0) / len(tried),
+        "repair_attempts": sum(attempts),
+        "first_attempt_quality": _mean([float(r.get("first_score") or 0.0) for r in tried]),
+        "final_quality": _mean([float(r.get("score") or 0.0) for r in tried]),
+        "repair_ms": round(sum(float(r.get("repair_ms") or 0.0) for r in tried), 1),
     }
 
 

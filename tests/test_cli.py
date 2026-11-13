@@ -875,3 +875,77 @@ def test_serve_warms_the_model_announces_the_local_address_and_stops_cleanly(mon
     out = capsys.readouterr().out
     assert "http://127.0.0.1:8765" in out
     assert "Stopped." in out
+
+
+def flaky_stub(fail_times):
+    """Answers JSON tasks with prose until it has been asked `fail_times` repairs."""
+
+    def generate(model, prompt, **_settings):
+        repairs = prompt.count("Your previous reply could not be used")
+        if prompt.startswith(("You triage", "Extract")) and repairs < fail_times:
+            result = stub_result(model, prompt)
+            return InferenceResult(**{**result.to_dict(), "response": "Let me think about it."})
+        return answering_stub(model, prompt, **_settings)
+
+    return generate
+
+
+def test_bounded_repair_re_asks_until_the_reply_fits_its_schema(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli, "generate", flaky_stub(fail_times=1))
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["suite", "--model", "m", "--suite", str(two_ticket_suite(tmp_path)),
+              "--warmup-runs", "0", "--repair", "2", "--output", str(output)])  # fmt: skip
+
+    records = read_jsonl(output)
+    json_tasks = [r for r in records if r["task"] in ("classify", "extract")]
+    assert {r["repair_attempts"] for r in json_tasks} == {1}
+    assert all(r["first_score"] == 0.0 and r["first_json_valid"] is False for r in json_tasks)
+    assert all(r["schema_valid"] for r in json_tasks)  # the final reply is the one scored
+    assert all(r["repaired_response"].startswith(("{", "```")) for r in json_tasks)
+    assert all("repair_attempts" not in r for r in records if r["task"] == "summarize")
+    out = capsys.readouterr().out
+    assert "after 1 repair(s)" in out
+    summary = cli.summary_of(records[0]["run_id"], records)["json"]
+    assert summary["first_attempt_valid_rate"] == 0.0
+    assert summary["repair_rate"] == 1.0
+    assert summary["repair_attempts"] == 4
+    assert summary["first_attempt_quality"] == 0.0
+    assert summary["final_quality"] > 0.0
+
+
+def test_repair_stops_after_its_bound(monkeypatch, tmp_path):
+    monkeypatch.setattr(cli, "generate", flaky_stub(fail_times=99))
+    output = tmp_path / "runs.jsonl"
+
+    suite = two_ticket_suite(tmp_path)
+    cli.main(["suite", "--model", "m", "--suite", str(suite), "--tasks", "classify",
+              "--warmup-runs", "0", "--repair", "2", "--output", str(output)])  # fmt: skip
+
+    records = read_jsonl(output)
+    assert {r["repair_attempts"] for r in records} == {2}
+    assert {r["score"] for r in records} == {0.0}
+
+
+def test_a_reply_that_fits_needs_no_repair_and_repair_is_off_by_default(monkeypatch, tmp_path):
+    monkeypatch.setattr(cli, "generate", answering_stub)
+    output = tmp_path / "runs.jsonl"
+    suite = two_ticket_suite(tmp_path)
+
+    cli.main(["suite", "--model", "m", "--suite", str(suite), "--tasks", "classify",
+              "--warmup-runs", "0", "--repair", "1", "--output", str(output)])  # fmt: skip
+    cli.main(["suite", "--model", "m", "--suite", str(suite), "--tasks", "classify",
+              "--warmup-runs", "0", "--output", str(output)])  # fmt: skip
+
+    with_repair, without = read_jsonl(output)[:2], read_jsonl(output)[2:]
+    assert {r["repair_attempts"] for r in with_repair} == {0}
+    assert all("repair_attempts" not in r for r in without)
+    assert "first_attempt_valid_rate" not in cli.summary_of(without[0]["run_id"], without)["json"]
+
+
+def test_repair_beyond_its_bound_is_refused(capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["suite", "--model", "m", "--repair", "3"])
+
+    assert exit_info.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err

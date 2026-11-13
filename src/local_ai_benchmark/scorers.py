@@ -56,6 +56,24 @@ class Score:
         }
 
 
+MAX_REPAIRS = 2
+
+
+def repair_prompt(prompt: str, reply: str, scored: Score) -> str:
+    """The task again, with the rejected reply and what was wrong with it. The runtime keeps
+    no conversation between requests, so the original task travels with the correction."""
+    problem = (
+        "it held no JSON object"
+        if not scored.json_valid
+        else "its keys or values did not match the format asked for"
+    )
+    shown = reply.strip()[:600] or "(empty)"
+    return (
+        f"{prompt}\n\nYour previous reply could not be used: {problem}.\n"
+        f"Previous reply:\n{shown}\n\nReply again with only the JSON object."
+    )
+
+
 _FENCE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL | re.IGNORECASE)
 _OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 _NULL_WORDS = ("", "null", "none", "n/a", "na", "not mentioned", "not specified", "unknown")
