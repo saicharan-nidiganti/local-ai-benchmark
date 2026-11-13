@@ -31,20 +31,25 @@ more speed and 23% less energy. llama3.2:3b is the fastest and as good at classi
 and extraction, but its summaries miss facts.
 [Full results](results/2026-11-13-three-model-comparison/).
 
-> **Status: Phase 4 of 6 complete, release v0.2.0.** Measurement harness, task suite,
-> three-model comparison, and privacy, latency and cost measured with networking off are
-> done. Next, Phase 5 ships the offline app. See [Project status](#project-status).
+**The app** runs that pick offline: paste a support ticket, get its category, priority,
+order number, customer, product, issue and a summary in about 3 s, with nothing leaving the
+machine ([The app](#the-app)).
+
+> **Status: all six phases complete.** Measurement harness, task suite, three-model
+> comparison, privacy, latency and cost measured with networking off, and the offline
+> triage app. See [Project status](#project-status).
 
 ## Contents
 
 - [Results](#results)
 - [Tradeoffs: privacy, latency and cost](#tradeoffs-privacy-latency-and-cost)
+- [The app](#the-app)
 - [Why the numbers can be trusted](#why-the-numbers-can-be-trusted)
 - [How it works](#how-it-works)
 - [What it measures](#what-it-measures)
 - [Quickstart](#quickstart)
+- [Reproduce the results](#reproduce-the-results)
 - [Commands](#commands)
-- [Reproducibility](#reproducibility)
 - [Engineering](#engineering)
 - [Project status](#project-status)
 - [Documentation](#documentation)
@@ -73,6 +78,7 @@ and summarized.
 | Experiment | Finding |
 | --- | --- |
 | [Privacy, latency and cost, offline](results/2026-11-13-offline-privacy-latency-cost/) | With networking off: the same 135 replies and 0 connections to another machine; every model meets every latency target; cost per model against the same model hosted |
+| [The app, offline](results/2026-11-13-offline-app/) | `triage` and the web page answer three fictional tickets with networking off, about 3 s each; a foreign Host header is refused |
 | [Three-model comparison](results/2026-11-13-three-model-comparison/) | Findings, chart, quality per task and ticket category, speed, resources, run identities, limits, how to reproduce |
 | [qwen3:4b baseline](results/2026-11-13-qwen3-4b-baseline/) | 30.8 tokens/s, 47 ms to the first token warm, 600 tokens/s prefill, 320 J per 256-token answer |
 
@@ -117,6 +123,36 @@ models' published API prices on 13 November 2026; hosted latency was not measure
 The local energy is the GPU board's alone, so local electricity is a lower bound; every price,
 the tariff and the exchange rate are sourced and dated in
 [configs/cost.yaml](configs/cost.yaml).
+
+## The app
+
+Support-ticket triage on phi4-mini, the comparison's best tradeoff, entirely on this machine:
+the category and priority, the order number, customer, product and issue, and a summary of
+at most 40 words. It asks the model exactly what the suite measured, the same prompts and
+JSON schemas, so the quality, speed and cost above describe it
+([ADR-0012](docs/decisions/0012-offline-triage-app.md)).
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/triage-app-dark.png">
+    <img src="docs/images/triage-app-light.png" width="600"
+         alt="The triage page: an example ticket about earbuds that do not charge, answered as technical, priority high, with the order number, customer, product, issue and a summary">
+  </picture>
+</p>
+
+```bash
+uv run local-ai-benchmark serve                # the page above, on http://127.0.0.1:8765
+uv run local-ai-benchmark triage ticket.txt    # or --text "...", or - for standard input
+uv run local-ai-benchmark triage ticket.txt --json
+```
+
+- **Works offline:** with networking off, both answered every ticket in 2.7 to 3.6 s with the
+  model loaded ([results](results/2026-11-13-offline-app/)).
+- **Keeps nothing:** no log of tickets or answers, no file. The page listens on 127.0.0.1
+  only, answers only requests addressed to `localhost`, refuses other origins, and loads
+  nothing from elsewhere.
+- **Knows its limits:** like every model measured, it tends to rate priority one level too
+  high; read the priority as a suggestion.
 
 ## Why the numbers can be trusted
 
@@ -212,39 +248,73 @@ Definitions and the reasoning behind them: [docs/methodology.md](docs/methodolog
 Requires Python 3.11+, [uv](https://docs.astral.sh/uv/) and [Ollama](https://ollama.com).
 
 ```bash
-ollama pull qwen3:4b-instruct && ollama pull phi4-mini && ollama pull llama3.2:3b
-
+ollama pull phi4-mini
 git clone https://github.com/saicharan-nidiganti/local-ai-benchmark.git && cd local-ai-benchmark
-uv sync                       # creates .venv from uv.lock, with the dev tools
+uv sync                                         # .venv from uv.lock, with the dev tools
+uv run local-ai-benchmark serve                 # the app on http://127.0.0.1:8765
 ```
 
-Ask one question and print its timings:
+Score a model on the 45 tasks, or time one prompt:
 
 ```bash
-uv run local-ai-benchmark ask --model phi4-mini --prompt "Explain TCP vs UDP in 5 bullet points."
+uv run local-ai-benchmark suite --model phi4-mini
+uv run local-ai-benchmark benchmark --model phi4-mini --prompt "Explain TCP vs UDP in 5 bullet points."
 ```
 
-Triage a support ticket with the recommended model, as a command or as a web page on
-http://127.0.0.1:8765 (nothing leaves the machine, and nothing is stored):
+`python -m local_ai_benchmark` works in place of `local-ai-benchmark`.
 
-```bash
-uv run local-ai-benchmark triage --text "My order ORD-48213 arrived broken. - Priya Raman"
-uv run local-ai-benchmark triage ticket.txt --json     # a file, or - for standard input
-uv run local-ai-benchmark serve                         # then open http://127.0.0.1:8765
-```
+## Reproduce the results
 
-Reproduce the comparison: score each model on the 45 tasks, then write the report.
+Every published number comes from these commands. On the reference laptop
+([environment](docs/environment.md)) the quality scores come out the same, since the
+settings are pinned (temperature 0, seed 42); speed, latency and energy are specific to the
+machine, and a few percent of drift between sessions is normal.
 
-```bash
-for model in qwen3-4b-instruct phi4-mini llama3.2-3b; do
-  uv run local-ai-benchmark suite --model "$model" --require-ac
-done
-uv run local-ai-benchmark report --out-dir results/my-comparison --title "My comparison"
-```
+1. **Pull the three models** and check their digests against
+   [docs/environment.md](docs/environment.md) (`ollama list` shows them):
 
-The report folder holds a README with the verdict and every table, the chart as SVG, and
-the summaries and manifests as JSON. `python -m local_ai_benchmark` works in place of
-`local-ai-benchmark`.
+   ```bash
+   ollama pull qwen3:4b-instruct && ollama pull phi4-mini && ollama pull llama3.2:3b
+   ```
+
+2. **Check the harness:** `make check` (lint, strict types, the offline tests), or the
+   commands in [CONTRIBUTING.md](CONTRIBUTING.md#everyday-commands) without make.
+
+3. **Plug the laptop in, close other work,** and for the privacy result turn networking off.
+   `--require-ac` stops a run on battery.
+
+4. **Score each model and time its cold starts:**
+
+   ```bash
+   for model in qwen3-4b-instruct phi4-mini llama3.2-3b; do
+     uv run local-ai-benchmark suite --model "$model" --require-ac
+     uv run local-ai-benchmark benchmark --model "$model" --cold --repeats 5 \
+       --max-output-tokens 64 --require-ac --prompt "Explain TCP vs UDP in 5 bullet points."
+   done
+   ```
+
+   In PowerShell: `foreach ($m in "qwen3-4b-instruct","phi4-mini","llama3.2-3b") { ... }`
+   with the same two commands. Each suite prints its quality and whether any connection
+   reached another machine.
+
+5. **Write the report** from the latest run of each model, with latency targets, cost and
+   privacy:
+
+   ```bash
+   uv run local-ai-benchmark report --cost configs/cost.yaml \
+     --out-dir results/my-comparison --title "My comparison"
+   ```
+
+6. **Compare** `results/my-comparison/README.md` with
+   [the published comparison](results/2026-11-13-three-model-comparison/) and
+   [the offline run](results/2026-11-13-offline-privacy-latency-cost/). For your own tariff,
+   machine or providers, edit `configs/cost.yaml`; every figure in it names its source.
+
+The single-prompt baseline is `benchmark --model qwen3-4b --prompt "Explain TCP vs UDP in 5
+bullet points." --repeats 5 --warmup-runs 1` ([baseline](results/2026-11-13-qwen3-4b-baseline/)).
+A measurement is only comparable with another taken under the same conditions: hardware and
+power, model digest and quantization, Ollama version, prompts and settings, warm-up and
+repetitions. Each run's manifest records them.
 
 ## Commands
 
@@ -265,19 +335,6 @@ and every run records the values it used. Measuring commands also take `--requir
 2 a configuration, suite, run-log or report error, 3 a preflight failure (server on another machine,
 server down, model not pulled, or on battery with `--require-ac`). `--help` on any command lists every flag.
 
-## Reproducibility
-
-A measurement is only comparable with another taken under the same conditions. Keep these
-fixed, and record them with the results (the manifest does most of it):
-
-- hardware, and whether the machine is plugged in and otherwise idle
-- model name, digest and quantization
-- Ollama version
-- prompts, sampling parameters, context length and maximum output tokens
-- warm-up procedure and number of repetitions
-
-The reference machine and its versions are in [docs/environment.md](docs/environment.md).
-
 ## Engineering
 
 ```bash
@@ -287,7 +344,7 @@ make check                    # lint, strict type check, tests with coverage
 Without make (for example in Windows PowerShell), run the commands listed in
 [CONTRIBUTING.md](CONTRIBUTING.md#everyday-commands).
 
-- **Offline tests.** 201 tests replace the Ollama client with a simulated token stream, so they
+- **Offline tests.** 224 tests replace the Ollama client with a simulated token stream, so they
   need no model, server or GPU. Coverage is 97% against a floor of 90%.
 - **Strict checks.** Ruff for lint and format, mypy `--strict`, pre-commit hooks.
 - **CI on every pull request**, all seven required to merge: lint and types, tests on Python 3.11
@@ -307,7 +364,7 @@ Each phase is a milestone; each task is an issue with acceptance criteria.
 | 2. Task suite | Quality scoring for one privacy-sensitive use case | Done; optional [#22](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/22) open | |
 | 3. Model comparison | Three models, same hardware and settings, quality against speed | Done; optional [#26](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/26) open | v0.2.0 |
 | 4. Privacy, latency and cost | Constraints measured, not asserted | Done | |
-| 5. Offline app | A usable app on the recommended model | [Next](https://github.com/saicharan-nidiganti/local-ai-benchmark/milestone/6) | v1.0.0 |
+| 5. Offline app and v1.0.0 | A usable app on the recommended model | Done | v1.0.0 |
 
 Gates and requirements per phase: [docs/roadmap.md](docs/roadmap.md) and
 [docs/requirements.md](docs/requirements.md). Every milestone:
@@ -338,6 +395,7 @@ data/raw/                 run log and manifests (git-ignored)
 data/processed/           derived data (git-ignored)
 docs/                     requirements, architecture, methodology, environment, roadmap
 docs/decisions/           architecture decision records
+docs/images/              screenshots of the app
 results/                  published results, one folder per experiment
 src/local_ai_benchmark/
   cli.py                  commands and argument parsing
