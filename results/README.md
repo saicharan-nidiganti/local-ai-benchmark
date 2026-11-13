@@ -26,6 +26,7 @@ only when their prompts contain nothing personal or confidential.
 
 | Experiment | Model | Finding |
 | --- | --- | --- |
+| [2026-11-13 phi4-mini, Q4_K_M against Q8_0](2026-11-13-phi4-mini-q4-vs-q8/) | phi4-mini, phi4-mini:3.8b-q8_0 | Q8_0 does not fit in 4 GB (44% on the GPU against 64%): 2.3 times slower, 1.8 times the GPU energy per task, 0.909 against 0.887 quality, mostly better priorities; Q4_K_M stays the pick |
 | [2026-11-13 the triage app, offline](2026-11-13-offline-app/) | phi4-mini | With networking off, the command and the web page answer every ticket in about 3 s with the model loaded; a foreign Host header is refused |
 | [2026-11-13 privacy, latency and cost, offline](2026-11-13-offline-privacy-latency-cost/) | qwen3:4b-instruct, phi4-mini, llama3.2:3b | With networking off, the same 135 replies and 0 connections to another machine; every model meets every latency target; GPU electricity costs 5 to 16 times less than the hosted price per token, but buying the laptop for this alone costs 2 to 6 times more |
 | [2026-11-13 three-model comparison](2026-11-13-three-model-comparison/) | qwen3:4b-instruct, phi4-mini, llama3.2:3b | phi4-mini is the best tradeoff: the quality of qwen3:4b-instruct (0.89) at 14% more speed; llama3.2:3b is 1.75 times faster but weaker at summaries (0.81 overall) |

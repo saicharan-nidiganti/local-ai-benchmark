@@ -17,3 +17,7 @@ models:
     name: qwen3:4b
     role: baseline   # the v0.1.0 speed baseline; a thinking build
     quantization: Q4_K_M
+  - id: phi4-mini-q8
+    name: phi4-mini:3.8b-q8_0
+    role: experiment   # Q4_K_M against Q8_0 (#26)
+    quantization: Q8_0

@@ -34,6 +34,7 @@ automatically, once per run ID, to `data/raw/manifests.jsonl`
 | `llama3.2:3b` | `a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72` | GGUF | 3.2B | Q4_K_M | 2.0 GB |
 | `qwen3:4b-instruct` | `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0` | GGUF | 4.0B | Q4_K_M | 2.5 GB |
 | `phi4-mini` | `78fad5d182a7c33065e153a5f8ba210754207ba9d91973f57dffa7f487363753` | GGUF | 3.8B | Q4_K_M | 2.5 GB |
+| `phi4-mini:3.8b-q8_0` | `0be8e69791811df9c91db1286c7fa09df489b4d075def36de77f050a4394f214` | GGUF | 3.8B | Q8_0 | 4.1 GB |
 | `gemma3:4b` | `68ceab7e468a31c988b44d5a4984a0e21f58c4f7158c6ce29c1804babac38df7` | GGUF | 3.9B | Q4_K_M | 3.3 GB |
 
 Capabilities as Ollama reports them: qwen3:4b and qwen3:4b-instruct `completion, tools,
