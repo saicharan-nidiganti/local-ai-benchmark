@@ -20,6 +20,19 @@ class Preflight:
     model: runtime.ModelDetails
 
 
+def check_host(allow_remote: bool = False) -> None:
+    """Refuse an Ollama server on another machine: every prompt and reply would leave this
+    one. `--allow-remote` is the explicit opt-out."""
+    host = runtime.host()
+    if allow_remote or runtime.is_local(host):
+        return
+    raise PreflightError(
+        f"OLLAMA_HOST points at {host}, which is not this machine: prompts and replies would "
+        "leave it. Unset OLLAMA_HOST to use the local server, or pass --allow-remote if "
+        "sending them there is intended."
+    )
+
+
 def check(model: str, think: bool = False) -> Preflight:
     try:
         version = runtime.server_version()

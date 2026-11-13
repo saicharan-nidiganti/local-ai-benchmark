@@ -77,3 +77,25 @@ def test_thinking_on_a_model_that_cannot_think_fails(monkeypatch):
     with pytest.raises(preflight.PreflightError, match="cannot think"):
         preflight.check("llama3.2:3b", think=True)
     assert preflight.check("llama3.2:3b").model.family == "llama"
+
+
+def test_a_local_host_passes_the_host_check(monkeypatch):
+    monkeypatch.delenv("OLLAMA_HOST", raising=False)
+
+    preflight.check_host()  # no error
+
+
+def test_a_remote_host_is_refused_with_what_to_do(monkeypatch):
+    monkeypatch.setenv("OLLAMA_HOST", "http://192.168.1.20:11434")
+
+    with pytest.raises(preflight.PreflightError, match="not this machine") as info:
+        preflight.check_host()
+
+    assert "--allow-remote" in str(info.value)
+    assert "Unset OLLAMA_HOST" in str(info.value)
+
+
+def test_allow_remote_lets_a_remote_host_through(monkeypatch):
+    monkeypatch.setenv("OLLAMA_HOST", "http://192.168.1.20:11434")
+
+    preflight.check_host(allow_remote=True)  # no error

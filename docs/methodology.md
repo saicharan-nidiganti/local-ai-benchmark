@@ -84,6 +84,13 @@ so every measuring command warns before its first request when the machine repor
 battery, and `--require-ac` turns the warning into an error. The manifest records the power
 state either way.
 
+The sampler also reads the connection table at every sample and keeps the remote ends of
+connections from the Ollama server, its model runner and the harness that are not loopback:
+anything that reached another machine, a LAN address included. A run records how many
+(`remote_connections`) and which (`remote_endpoints`); a summary adds them up. A connection
+that opens and closes between two samples is missed, which is why the suite is also run with
+networking turned off ([ADR-0011](decisions/0011-local-only-runtime-and-connection-audit.md)).
+
 Limits: the energy figure covers the GPU board only, not the CPU, memory or screen; and a run
 shorter than the interval gets only its start and end samples. GPU fields are empty on a
 machine without an NVIDIA driver. `--no-sampling` skips sampling entirely.

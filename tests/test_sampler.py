@@ -129,3 +129,55 @@ def test_no_ollama_process_gives_none(monkeypatch):
 
     assert sampler.runtime_rss_mb() is None
     assert sampler.system_ram_used_mb() > 0
+
+
+def conn(pid, ip, port=443):
+    return SimpleNamespace(pid=pid, raddr=SimpleNamespace(ip=ip, port=port) if ip else ())
+
+
+def test_only_connections_of_ollama_or_this_process_to_other_machines_count(monkeypatch):
+    import os
+
+    monkeypatch.setattr(sampler, "runtime_pids", lambda: {101})
+    monkeypatch.setattr(
+        sampler.psutil,
+        "net_connections",
+        lambda kind: [
+            conn(101, "203.0.113.5"),  # Ollama to the internet: counted
+            conn(101, "127.0.0.1", 11434),  # loopback: this machine
+            conn(os.getpid(), "192.168.1.20", 11434),  # the harness to the LAN: counted
+            conn(999, "198.51.100.7"),  # some other program: not ours
+            conn(101, None),  # a listening socket has no remote end
+        ],
+    )
+
+    assert sampler.remote_endpoints() == frozenset({"203.0.113.5:443", "192.168.1.20:11434"})
+
+
+def test_an_unreadable_connection_table_gives_none(monkeypatch):
+    def denied(kind):
+        raise sampler.psutil.AccessDenied()
+
+    monkeypatch.setattr(sampler.psutil, "net_connections", denied)
+
+    assert sampler.remote_endpoints() is None
+
+
+def test_the_summary_unions_the_endpoints_seen_in_every_sample():
+    samples = [
+        sampler.Sample(0.0, 8000, None, None, None, frozenset()),
+        sampler.Sample(0.5, 8000, None, None, None, frozenset({"203.0.113.5:443"})),
+        sampler.Sample(1.0, 8000, None, None, None, None),
+    ]
+
+    record = sampler.summarize_samples(samples, duration_s=1.0).record()
+
+    assert record["remote_connections"] == 1
+    assert record["remote_endpoints"] == ["203.0.113.5:443"]
+
+
+def test_no_readable_sample_leaves_the_connection_fields_unknown():
+    record = sampler.summarize_samples([make(0.0)], duration_s=1.0).record()
+
+    assert record["remote_connections"] is None
+    assert record["remote_endpoints"] is None

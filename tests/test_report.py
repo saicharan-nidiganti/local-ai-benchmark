@@ -160,3 +160,32 @@ def test_every_report_file_has_unix_line_endings(tmp_path):
 
     for name in ("README.md", "quality_vs_speed.svg", "summaries.json", "manifests.json"):
         assert b"\r\n" not in (tmp_path / name).read_bytes(), name
+
+
+def audited(run_id, model, connections, interfaces):
+    records = suite_records(run_id, model, 0.9, 30.0)
+    for row in records:
+        row["remote_connections"] = connections
+    manifest = {
+        "model": {"digest": "abcdef1234567890", "quantization": "Q4_K_M"},
+        "runtime": {"version": "0.40.16", "local": True},
+        "network": {"interfaces_up": interfaces},
+        "harness": {"git_sha": "0123456789abcdef"},
+    }
+    return report.model_result(run_id, records, SUITE, manifest)
+
+
+def test_audited_runs_get_a_privacy_section():
+    results = [audited("r1", "a", 0, []), audited("r2", "b", 0, ["vEthernet (WSL)"])]
+
+    text = report.render_markdown(results, "x", "chart.svg")
+
+    assert "## Privacy" in text
+    assert "| a | this machine | none | 0 in 45 runs |" in text
+    assert "| b | this machine | vEthernet (WSL) | 0 in 45 runs |" in text
+
+
+def test_runs_from_before_the_audit_have_no_privacy_section():
+    results = [result("r1", "a", 0.9, 30.0), result("r2", "b", 0.8, 50.0)]
+
+    assert "## Privacy" not in report.render_markdown(results, "x", "chart.svg")
