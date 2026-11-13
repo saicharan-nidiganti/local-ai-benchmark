@@ -100,8 +100,8 @@ the run count, error rate, and median latency, TTFT and throughput.
 Score a model on the whole task suite (45 support-ticket tasks: classify, extract, summarize):
 
 ```bash
-uv run local-ai-benchmark suite --model qwen3-4b    # --tasks classify to run one kind
-uv run local-ai-benchmark suite --model qwen3-4b --json-mode prompt   # JSON from the prompt alone
+uv run local-ai-benchmark suite --model qwen3-4b-instruct   # --tasks classify for one kind
+uv run local-ai-benchmark suite --model phi4-mini --json-mode prompt # JSON from the prompt alone
 ```
 
 Every benchmark and suite run gets a run ID. Rebuild its summary from the log at any time:

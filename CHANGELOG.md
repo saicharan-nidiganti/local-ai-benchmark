@@ -8,6 +8,9 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
+- ADR-0010: the comparison uses qwen3:4b-instruct, phi4-mini and llama3.2:3b, chosen from a
+  screening of five models on the reference GPU; the registry and the environment list them
+  with their digests ([#23](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/23)).
 - ADR-0008: the task suite's use case is support-ticket triage: classify category and
   priority, extract fields as JSON, summarize in at most 40 words, all on fictional tickets
   ([#18](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/18)).

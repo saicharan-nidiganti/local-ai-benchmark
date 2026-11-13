@@ -127,7 +127,9 @@ def test_loads_the_model_registry_and_resolves_ids_and_tags():
 
     assert resolve_model("qwen3-4b", models).name == "qwen3:4b"
     assert resolve_model("qwen3:4b", models).id == "qwen3-4b"
-    assert resolve_model("llama3.2:3b", models) == ModelEntry(id="llama3.2:3b", name="llama3.2:3b")
+    assert resolve_model("mistral:7b", models) == ModelEntry(id="mistral:7b", name="mistral:7b")
+    comparison = [m.name for m in models if m.role == "comparison"]
+    assert comparison == ["qwen3:4b-instruct", "phi4-mini", "llama3.2:3b"]
     assert load_models(None) == []
 
 

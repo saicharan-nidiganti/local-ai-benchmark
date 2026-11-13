@@ -17,9 +17,9 @@ changed decision gets a new ADR that supersedes the old one.
 | [0007](0007-run-identity-and-manifests.md) | Run identity and environment manifests | Accepted |
 | [0008](0008-use-case-support-ticket-triage.md) | Use case: support-ticket triage | Accepted |
 | [0009](0009-structured-output-for-json-tasks.md) | Structured output for the JSON tasks | Accepted |
+| [0010](0010-three-models-to-compare.md) | The three models to compare | Accepted |
 
-Decisions still to make, each tracked as an issue labelled `decision`:
-[the three models to compare (#23)](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/23).
+No decision is open. New ones are tracked as issues labelled `decision`.
 
 ## Process
 
