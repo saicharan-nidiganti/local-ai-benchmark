@@ -796,3 +796,82 @@ def test_report_with_cost_assumptions_writes_the_cost_section(monkeypatch, tmp_p
 
     assert "## Cost" in (tmp_path / "out" / "README.md").read_text(encoding="utf-8")
     assert (tmp_path / "out" / "cost.json").is_file()
+
+
+def triage_stub(model, prompt, settings=None, output_format=None):
+    if prompt.startswith("You triage"):
+        reply = '{"category": "shipping", "priority": "medium"}'
+    elif prompt.startswith("Extract"):
+        reply = (
+            '{"order_id": "ORD-9", "customer_name": "Lena Ortiz", "product": null, "issue": "late"}'
+        )
+    else:
+        reply = "ORD-9 is late."
+    return __import__("dataclasses").replace(stub_result(model, prompt), response=reply)
+
+
+def test_triage_reads_a_ticket_file_and_prints_the_answer(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli, "generate", triage_stub)
+    ticket = tmp_path / "ticket.txt"
+    ticket.write_text("My parcel ORD-9 is late. - Lena Ortiz", encoding="utf-8")
+
+    cli.main(["triage", str(ticket)])
+
+    out = capsys.readouterr().out
+    assert "Category:  shipping" in out
+    assert "Order:     ORD-9" in out
+    assert "phi4-mini on this machine" in out  # the recommended model by default
+    assert not (tmp_path / "project" / "data").exists()  # the app records nothing
+
+
+def test_triage_reads_standard_input_and_prints_json(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "generate", triage_stub)
+    monkeypatch.setattr(cli.sys, "stdin", __import__("io").StringIO("My parcel ORD-9 is late."))
+
+    cli.main(["triage", "--json", "--model", "llama3.2:3b"])
+
+    answer = json.loads(capsys.readouterr().out)
+    assert answer["model"] == "llama3.2:3b"
+    assert answer["order_id"] == "ORD-9"
+
+
+def test_triage_refuses_a_remote_runtime_and_an_empty_ticket(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli, "generate", triage_stub)
+    monkeypatch.setenv("OLLAMA_HOST", "http://192.168.1.20:11434")
+    with pytest.raises(SystemExit) as remote:
+        cli.main(["triage", "--text", "hello"])
+    monkeypatch.delenv("OLLAMA_HOST")
+    with pytest.raises(SystemExit) as empty:
+        cli.main(["triage", "--text", "   "])
+    with pytest.raises(SystemExit) as missing:
+        cli.main(["triage", str(tmp_path / "nope.txt")])
+
+    assert (remote.value.code, empty.value.code, missing.value.code) == (3, 2, 2)
+    err = capsys.readouterr().err
+    assert "not this machine" in err
+    assert "the ticket is empty" in err
+    assert "cannot read the ticket" in err
+
+
+def test_serve_warms_the_model_announces_the_local_address_and_stops_cleanly(monkeypatch, capsys):
+    events = []
+
+    class FakeServer:
+        server_address = ("127.0.0.1", 8765)
+
+        def serve_forever(self):
+            events.append("serving")
+            raise KeyboardInterrupt
+
+        def server_close(self):
+            events.append("closed")
+
+    monkeypatch.setattr(cli.web, "make_server", lambda model, settings, gen, port: FakeServer())
+    monkeypatch.setattr(cli, "generate", lambda **kw: events.append(("warm", kw["model"])))
+
+    cli.main(["serve"])
+
+    assert events == [("warm", "phi4-mini"), "serving", "closed"]
+    out = capsys.readouterr().out
+    assert "http://127.0.0.1:8765" in out
+    assert "Stopped." in out

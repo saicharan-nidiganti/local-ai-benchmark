@@ -23,7 +23,12 @@ The project's purpose is to run language models without sending data anywhere.
   records any connection from Ollama, its model runner or the harness to another machine
   (`remote_connections` in each record and summary). The manifest records which network
   interfaces were up.
-- **What is stored.** Every run, including the full prompt and reply, is appended to
+- **The app.** `triage` and `serve` keep nothing: no log of tickets or answers, no file. The
+  web page listens on 127.0.0.1 only, answers only requests addressed to `127.0.0.1` or
+  `localhost` (against DNS rebinding), refuses posts from other origins, caps requests at
+  16 KB, and sends a Content-Security-Policy that lets the page load nothing from elsewhere
+  ([ADR-0012](docs/decisions/0012-offline-triage-app.md)).
+- **What is stored.** Every benchmark run, including the full prompt and reply, is appended to
   `data/raw/runs.jsonl` on the local disk. That folder is git-ignored and never published;
   only curated summaries are committed.
 - **What to keep out.** Do not put personal or confidential text in prompts, task suites or

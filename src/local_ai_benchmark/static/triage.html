@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ticket triage</title>
+<style>
+:root { --bg: #f6f7f9; --card: #ffffff; --ink: #111827; --muted: #4b5563; --line: #e5e7eb;
+  --accent: #2563eb; --ok: #15803d; --warn: #b45309; --bad: #b91c1c; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0b1220; --card: #111a2e; --ink: #e5e7eb; --muted: #9ca3af; --line: #1f2a44;
+    --accent: #60a5fa; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
+h1 { font-size: 26px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 20px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+textarea { width: 100%; min-height: 150px; resize: vertical; padding: 12px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
+.row { display: flex; gap: 12px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+button { border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; cursor: pointer; }
+.primary { background: var(--accent); color: #fff; font-weight: 600; }
+.secondary { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+button:disabled { opacity: 0.6; cursor: wait; }
+#status { color: var(--muted); }
+#result { margin-top: 20px; display: none; }
+.badges { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.badge { border-radius: 999px; padding: 4px 12px; font-weight: 600; font-size: 14px;
+  border: 1px solid var(--line); }
+.p-urgent, .p-high { color: var(--bad); } .p-medium { color: var(--warn); } .p-low { color: var(--ok); }
+dl { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; margin: 0; }
+dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
+.summary { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.foot { margin-top: 14px; color: var(--muted); font-size: 14px; }
+.err { color: var(--bad); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Ticket triage</h1>
+  <p class="sub">{{MODEL}} on this machine. The ticket goes to Ollama on 127.0.0.1 and nowhere
+  else, and nothing is stored.</p>
+  <div class="card">
+    <label for="ticket" class="sub">Paste a support ticket</label>
+    <textarea id="ticket" maxlength="4000" placeholder="Hello, my order..."></textarea>
+    <div class="row">
+      <button class="primary" id="go">Triage</button>
+      <button class="secondary" id="example">Use an example</button>
+      <span id="status"></span>
+    </div>
+    <div id="result">
+      <div class="badges"><span class="badge" id="category"></span><span class="badge" id="priority"></span></div>
+      <dl>
+        <dt>Order</dt><dd id="order_id"></dd>
+        <dt>Customer</dt><dd id="customer_name"></dd>
+        <dt>Product</dt><dd id="product"></dd>
+        <dt>Issue</dt><dd id="issue"></dd>
+      </dl>
+      <div class="summary"><span class="sub">Summary</span><div id="summary"></div></div>
+      <div class="foot" id="foot"></div>
+    </div>
+  </div>
+</main>
+<script>
+const EXAMPLE = {{EXAMPLE}};
+const $ = (id) => document.getElementById(id);
+function show(id, value) { $(id).textContent = value || "-"; }
+async function run() {
+  const ticket = $("ticket").value;
+  $("go").disabled = true; $("status").textContent = "Thinking on this machine...";
+  try {
+    const response = await fetch("/api/triage", { method: "POST",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticket }) });
+    const data = await response.json();
+    if (!response.ok) { $("status").innerHTML = ""; $("status").append(errorLine(data.error)); return; }
+    show("category", data.category); show("priority", data.priority && "priority: " + data.priority);
+    $("priority").className = "badge p-" + (data.priority || "none");
+    ["order_id", "customer_name", "product", "issue", "summary"].forEach((k) => show(k, data[k]));
+    $("foot").textContent = data.model + " on this machine, 3 requests, " +
+      (data.total_ms / 1000).toFixed(1) + " s";
+    data.errors.forEach((e) => $("foot").append(document.createElement("br"), errorLine(e)));
+    $("result").style.display = "block"; $("status").textContent = "";
+  } catch (e) {
+    $("status").innerHTML = ""; $("status").append(errorLine("The local server did not answer."));
+  } finally { $("go").disabled = false; }
+}
+function errorLine(text) { const s = document.createElement("span"); s.className = "err";
+  s.textContent = text; return s; }
+$("go").addEventListener("click", run);
+$("example").addEventListener("click", () => { $("ticket").value = EXAMPLE; });
+if (location.hash === "#example") { $("ticket").value = EXAMPLE; run(); }
+</script>
+</body>
+</html>

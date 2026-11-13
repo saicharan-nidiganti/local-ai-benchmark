@@ -224,6 +224,15 @@ Ask one question and print its timings:
 uv run local-ai-benchmark ask --model phi4-mini --prompt "Explain TCP vs UDP in 5 bullet points."
 ```
 
+Triage a support ticket with the recommended model, as a command or as a web page on
+http://127.0.0.1:8765 (nothing leaves the machine, and nothing is stored):
+
+```bash
+uv run local-ai-benchmark triage --text "My order ORD-48213 arrived broken. - Priya Raman"
+uv run local-ai-benchmark triage ticket.txt --json     # a file, or - for standard input
+uv run local-ai-benchmark serve                         # then open http://127.0.0.1:8765
+```
+
 Reproduce the comparison: score each model on the 45 tasks, then write the report.
 
 ```bash
@@ -246,6 +255,8 @@ the summaries and manifests as JSON. `python -m local_ai_benchmark` works in pla
 | `suite` | Every task of a suite (or one kind with `--tasks`), each reply scored |
 | `report` | The latest suite run of each comparison model, or the `--run-id`s given, as a results folder; adds latency targets when a model has a cold benchmark, and cost with `--cost configs/cost.yaml` |
 | `summarize` | Rebuilds the summary of any run ID from the log; `--list` lists them |
+| `triage` | The app: one ticket's category, priority, order number, customer, product, issue and summary, on phi4-mini unless `--model` says otherwise; `--json` for scripts |
+| `serve` | The app as a web page on http://127.0.0.1:8765, reachable from this machine only |
 
 `--model` takes an Ollama tag or an id from [configs/models.yaml](configs/models.yaml).
 Settings come from [configs/benchmark.yaml](configs/benchmark.yaml); flags override them,
@@ -339,6 +350,7 @@ src/local_ai_benchmark/
   manifest.py             the environment of each run ID
   metrics.py              run log, run IDs, medians and spreads
   report.py               comparison report: verdict, tables and chart
+  app.py, web.py          the offline triage app and its local web page (static/triage.html)
   targets.py              latency targets for interactive use, with their sources
   cost.py                 cost per million tokens and per 1,000 tasks, local against hosted
   paths.py                where the project and the run log live
