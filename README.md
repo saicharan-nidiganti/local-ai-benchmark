@@ -79,6 +79,7 @@ and summarized.
 | --- | --- |
 | [Privacy, latency and cost, offline](results/2026-11-13-offline-privacy-latency-cost/) | With networking off: the same 135 replies and 0 connections to another machine; every model meets every latency target; cost per model against the same model hosted |
 | [The app, offline](results/2026-11-13-offline-app/) | `triage` and the web page answer three fictional tickets with networking off, about 3 s each; a foreign Host header is refused |
+| [phi4-mini, Q4_K_M against Q8_0](results/2026-11-13-phi4-mini-q4-vs-q8/) | Q8_0 sits 44% on the GPU against 64%: 2.3 times slower and 1.8 times the GPU energy per task, for 0.022 more quality; Q4_K_M stays the pick |
 | [Three-model comparison](results/2026-11-13-three-model-comparison/) | Findings, chart, quality per task and ticket category, speed, resources, run identities, limits, how to reproduce |
 | [qwen3:4b baseline](results/2026-11-13-qwen3-4b-baseline/) | 30.8 tokens/s, 47 ms to the first token warm, 600 tokens/s prefill, 320 J per 256-token answer |
 
@@ -362,7 +363,7 @@ Each phase is a milestone; each task is an issue with acceptance criteria.
 | 0. Foundation | Clean repository, tooling, documentation, working local runtime | Done | |
 | 1. Measurement harness | Reproducible timing, manifests and resource sampling | Done | [v0.1.0](https://github.com/saicharan-nidiganti/local-ai-benchmark/releases/tag/v0.1.0) |
 | 2. Task suite | Quality scoring for one privacy-sensitive use case | Done; optional [#22](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/22) open | |
-| 3. Model comparison | Three models, same hardware and settings, quality against speed | Done; optional [#26](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/26) open | v0.2.0 |
+| 3. Model comparison | Three models, same hardware and settings, quality against speed | Done | v0.2.0 |
 | 4. Privacy, latency and cost | Constraints measured, not asserted | Done | |
 | 5. Offline app and v1.0.0 | A usable app on the recommended model | Done | v1.0.0 |
 

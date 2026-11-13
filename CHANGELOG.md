@@ -6,6 +6,14 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Results: phi4-mini at Q4_K_M against Q8_0. Q8_0 keeps 44% of itself on the 4 GB GPU
+  against 64%, decodes at 14.4 tokens/s against 32.9, uses 1.8 times the GPU energy per task
+  and starts cold in 8.3 s against 4.2 s, for 0.909 quality against 0.887; Q4_K_M stays the
+  pick. The registry lists the Q8_0 build as `phi4-mini-q8`
+  ([#26](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/26)).
+
 ## [1.0.0] - 2026-11-13
 
 ### Added
