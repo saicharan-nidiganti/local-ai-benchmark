@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from html import escape
 from pathlib import Path
 from statistics import fmean, median
@@ -13,6 +13,7 @@ from typing import Any
 
 from .metrics import Record, suite_summary
 from .suite import CATEGORIES, TASK_KINDS, Suite
+from .targets import TARGETS
 
 # A model is "close enough" to the most accurate one when its overall quality is within this.
 TRADEOFF_MARGIN = 0.05
@@ -30,6 +31,19 @@ class ModelResult:
     manifest: Record | None
     by_category: dict[str, float]
     latency_by_task: dict[str, float]
+    cold: Record | None = None  # summary of the model's latest cold benchmark, if any
+
+    def target_value(self, key: str) -> float | None:
+        """The measured value a latency target is judged on: warm figures from the suite run,
+        the cold first token from the cold benchmark."""
+        if key == "warm_ttft_ms":
+            return self.stat("ttft_ms")
+        if key == "decode_tokens_per_sec":
+            return self.decode_speed or None
+        if key == "cold_ttft_ms" and self.cold is not None:
+            value = self.cold.get("median_ttft_ms")
+            return None if value is None else float(value)
+        return None
 
     @property
     def quality(self) -> float:
@@ -72,6 +86,10 @@ def model_result(
         by_category=by_category,
         latency_by_task=latency_by_task,
     )
+
+
+def with_cold_start(result: ModelResult, cold: Record | None) -> ModelResult:
+    return result if cold is None else replace(result, cold=cold)
 
 
 @dataclass(frozen=True)
@@ -203,6 +221,37 @@ def quality_speed_svg(results: list[ModelResult]) -> str:
     return "\n".join(parts) + "\n"
 
 
+def latency_section(results: list[ModelResult]) -> list[str]:
+    """Each model against the latency targets for interactive use; shown when at least one
+    model has a cold benchmark."""
+    if all(r.cold is None for r in results):
+        return []
+    header = " | ".join(f"{t.name} ({t.bound})" for t in TARGETS)
+    lines = [
+        "",
+        "## Latency targets for interactive use",
+        "",
+        f"| Model | {header} |",
+        "| --- |" + " --- |" * len(TARGETS),
+    ]
+    for r in results:
+        cells = []
+        for target in TARGETS:
+            value = r.target_value(target.key)
+            met = target.met(value)
+            verdict = {True: "meets", False: "misses", None: "not measured"}[met]
+            cells.append(verdict if value is None else f"{_fmt(value, 1)}: {verdict}")
+        lines.append(f"| {r.model} | {' | '.join(cells)} |")
+    lines += ["", "Why these limits:", ""]
+    lines += [f"- **{t.name} {t.bound}:** {t.reason}." for t in TARGETS]
+    lines += [
+        "",
+        "Warm figures are medians over the suite run; the cold first token is the median of the "
+        "model's latest `benchmark --cold`, each run starting with the model unloaded.",
+    ]
+    return lines
+
+
 def privacy_section(results: list[ModelResult]) -> list[str]:
     """Where each run's requests went and whether anything reached another machine; empty for
     runs from before the connection audit."""
@@ -305,6 +354,7 @@ def render_markdown(results: list[ModelResult], title: str, chart_name: str) -> 
     for r in results:
         cells = " | ".join(_fmt(r.latency_by_task.get(k), 0) for k in TASK_KINDS)
         lines.append(f"| {r.model} | {cells} |")
+    lines += latency_section(results)
     lines += privacy_section(results)
     lines += [
         "",

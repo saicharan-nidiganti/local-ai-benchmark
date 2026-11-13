@@ -125,9 +125,11 @@ def summarize(records: Iterable[Record]) -> Record:
 
 def run_summary(run_id: str, records: list[Record]) -> Record:
     """The summary `benchmark` prints and `summarize` rebuilds from the log."""
+    start = records[0].get("start") if records else None
     return {
         "run_id": run_id,
         "model": records[0].get("model") if records else None,
+        **({"start": start} if start else {}),  # older runs have no start field
         **summarize(records),
     }
 

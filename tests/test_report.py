@@ -189,3 +189,21 @@ def test_runs_from_before_the_audit_have_no_privacy_section():
     results = [result("r1", "a", 0.9, 30.0), result("r2", "b", 0.8, 50.0)]
 
     assert "## Privacy" not in report.render_markdown(results, "x", "chart.svg")
+
+
+def test_a_cold_start_adds_the_latency_targets():
+    warm = result("r1", "a", 0.9, 30.0)
+    cold = {"median_ttft_ms": 4200.0}
+    results = [report.with_cold_start(warm, cold), result("r2", "b", 0.8, 8.0)]
+
+    text = report.render_markdown(results, "x", "chart.svg")
+
+    assert "## Latency targets for interactive use" in text
+    assert "| a | 50.0: meets | 30.0: meets | 4,200.0: meets |" in text
+    assert "| b | 50.0: meets | 8.0: misses | not measured |" in text
+
+
+def test_without_cold_starts_there_is_no_latency_section():
+    results = [result("r1", "a", 0.9, 30.0), result("r2", "b", 0.8, 50.0)]
+
+    assert "Latency targets" not in report.render_markdown(results, "x", "chart.svg")

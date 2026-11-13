@@ -98,6 +98,7 @@ Solid boxes and arrows exist today; dashed ones are planned.
 | `suite.py` | Load and validate a suite file (pydantic: label sets, required keys, duplicate ids); expand each ticket into classify, extract and summarize tasks with the versioned prompts | `load_suite(path) -> Suite`, `Suite.tasks()`, `Task.prompt`, `SuiteError` | pydantic |
 | `scorers.py` | Score a reply from 0 to 1 for its task kind: label match, field accuracy, summary facts and length; judge JSON as strict, recovered or invalid, and schema-valid against pydantic models | `score(task, reply) -> Score`, `parse_json_object`, `normalize` | `suite`, pydantic |
 | `report.py` | Compare suite runs of several models: quality overall, per task kind and per ticket category; speed, GPU share, power and energy; the run identities; a verdict (most accurate, fastest, best tradeoff); and a quality-against-speed chart as SVG | `model_result(run_id, records, suite, manifest)`, `verdict(results)`, `write_report(results, out_dir, title)` | `metrics`, `suite` |
+| `targets.py` | The latency targets for interactive use, each with its limit, unit and cited reason | `TARGETS`, `Target.met(value)` | none |
 | `paths.py` | Locate the project folder (`LOCAL_AI_BENCHMARK_HOME`, else the source checkout, else the working folder) and the default run log in it | `project_root()`, `default_run_log()` | standard library |
 
 Dependency rules: no module imports `cli`; only `inference` (generation) and `runtime`
@@ -203,6 +204,7 @@ One JSON object per line in `data/raw/runs.jsonl`. Version 1, as written today:
 | `peak_gpu_memory_mb` | number or null | MiB | sampler | GPU memory in use, peak (`nvidia-smi`) |
 | `mean_gpu_power_w` | number or null | W | sampler | GPU board power, mean over the samples |
 | `gpu_energy_j` | number or null | J | derived | Mean GPU power times `total_latency_ms` |
+| `start` | `cold` or `warm` | | benchmark | Whether the model was unloaded before the run (`benchmark --cold`); benchmark records only |
 | `remote_connections` | integer or null | count | sampler | Distinct remote ends of connections from Ollama, its runner or the harness to another machine during the run; null when the connection table cannot be read |
 | `remote_endpoints` | list or null | `address:port` | sampler | Those remote ends |
 | `gpu_offload_pct` | number or null | % | Ollama `/api/ps` | Share of the loaded model's memory on the GPU, read after the run |

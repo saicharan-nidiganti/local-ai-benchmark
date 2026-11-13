@@ -198,9 +198,9 @@ the summaries and manifests as JSON. `python -m local_ai_benchmark` works in pla
 | Command | What it does |
 | --- | --- |
 | `ask` | One prompt, one measured run, its metrics printed |
-| `benchmark` | One prompt, warm-up runs, then repeated measured runs and their summary |
+| `benchmark` | One prompt, warm-up runs, then repeated measured runs and their summary; `--cold` unloads the model before every run |
 | `suite` | Every task of a suite (or one kind with `--tasks`), each reply scored |
-| `report` | The latest suite run of each comparison model, or the `--run-id`s given, as a results folder |
+| `report` | The latest suite run of each comparison model, or the `--run-id`s given, as a results folder; adds latency targets when a model has a cold benchmark |
 | `summarize` | Rebuilds the summary of any run ID from the log; `--list` lists them |
 
 `--model` takes an Ollama tag or an id from [configs/models.yaml](configs/models.yaml).
@@ -295,6 +295,7 @@ src/local_ai_benchmark/
   manifest.py             the environment of each run ID
   metrics.py              run log, run IDs, medians and spreads
   report.py               comparison report: verdict, tables and chart
+  targets.py              latency targets for interactive use, with their sources
   paths.py                where the project and the run log live
 tests/                    offline test suite
 ```

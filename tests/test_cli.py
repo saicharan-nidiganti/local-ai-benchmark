@@ -704,3 +704,75 @@ def test_a_clean_benchmark_says_nothing_left_the_machine(monkeypatch, tmp_path, 
               "--warmup-runs", "0", "--output", str(tmp_path / "r.jsonl")])  # fmt: skip
 
     assert "Network: no connection to another machine" in capsys.readouterr().out
+
+
+def test_a_cold_benchmark_unloads_before_every_run_and_skips_the_warm_up(
+    monkeypatch, tmp_path, capsys
+):
+    events = []
+    monkeypatch.setattr(cli.runtime, "unload", lambda name: events.append(("unload", name)))
+    monkeypatch.setattr(
+        cli, "generate", lambda **kw: events.append(("generate", kw["model"])) or stub_result(**kw)
+    )
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["benchmark", "--model", "m", "--prompt", "p", "--repeats", "2", "--cold",
+              "--output", str(output)])  # fmt: skip
+
+    assert events == [("unload", "m"), ("generate", "m"), ("unload", "m"), ("generate", "m")]
+    assert {r["start"] for r in read_jsonl(output)} == {"cold"}
+    assert '"start": "cold"' in capsys.readouterr().out
+
+
+def test_a_warm_benchmark_records_that_it_started_warm(monkeypatch, tmp_path):
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["benchmark", "--model", "m", "--prompt", "p", "--repeats", "1",
+              "--output", str(output)])  # fmt: skip
+
+    assert read_jsonl(output)[0]["start"] == "warm"
+
+
+def test_a_model_that_cannot_be_unloaded_stops_the_cold_benchmark(monkeypatch, tmp_path, capsys):
+    def stuck(name):
+        raise TimeoutError(f"{name} is still loaded after 30 s")
+
+    monkeypatch.setattr(cli.runtime, "unload", stuck)
+    monkeypatch.setattr(cli, "generate", lambda **kw: stub_result(**kw))
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["benchmark", "--model", "m", "--prompt", "p", "--cold",
+                  "--output", str(tmp_path / "r.jsonl")])  # fmt: skip
+
+    assert exit_info.value.code == 3
+    assert "could not unload m for a cold start" in capsys.readouterr().err
+
+
+def test_the_report_judges_each_model_against_the_latency_targets(monkeypatch, tmp_path, capsys):
+    registry = tmp_path / "models.yaml"
+    registry.write_text(
+        "models:\n  - {id: a, name: 'model-a', role: comparison}\n"
+        "  - {id: b, name: 'model-b', role: comparison}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cli, "generate", answering_stub)
+    monkeypatch.setattr(cli.runtime, "unload", lambda name: None)
+    output = tmp_path / "runs.jsonl"
+    suite = two_ticket_suite(tmp_path)
+    for model in ("model-a", "model-b"):
+        cli.main(["suite", "--model", model, "--suite", str(suite), "--warmup-runs", "0",
+                  "--output", str(output)])  # fmt: skip
+    cli.main(["benchmark", "--model", "model-a", "--prompt", "p", "--repeats", "2", "--cold",
+              "--output", str(output)])  # fmt: skip
+    capsys.readouterr()
+
+    cli.main(["report", "--out-dir", str(tmp_path / "out"), "--suite", str(suite),
+              "--models", str(registry), "--output", str(output)])  # fmt: skip
+
+    text = (tmp_path / "out" / "README.md").read_text(encoding="utf-8")
+    assert "## Latency targets for interactive use" in text
+    latency = text.split("## Latency targets for interactive use")[1]
+    model_b_row = next(line for line in latency.splitlines() if line.startswith("| model-b |"))
+    assert model_b_row.endswith("| not measured |")  # model-b has no cold benchmark
+    assert "Nielsen" in text

@@ -175,12 +175,21 @@ def ask(args: argparse.Namespace) -> None:
     print(f"\nSaved: {output}")
 
 
+def unload_model(name: str) -> None:
+    """Unload the model before a cold run; a runtime that cannot do it stops the benchmark."""
+    try:
+        runtime.unload(name)
+    except (httpx.HTTPError, ollama.ResponseError, OSError, TimeoutError) as exc:
+        raise preflight.PreflightError(f"could not unload {name} for a cold start: {exc}") from exc
+
+
 def benchmark(args: argparse.Namespace) -> None:
     settings, model = resolve(args)
     checked = check_runtime(settings, model, args.require_ac, args.allow_remote)
 
-    # Warm-up runs are deliberately not included in the measured dataset.
-    for i in range(settings.warmup_runs):
+    # Warm-up runs are deliberately not included in the measured dataset. A cold benchmark
+    # has none: every measured run starts with the model unloaded.
+    for i in range(0 if args.cold else settings.warmup_runs):
         print(f"Warm-up {i + 1}/{settings.warmup_runs}...")
         generate(model=model.name, prompt=args.prompt, settings=settings.generation)
 
@@ -191,13 +200,16 @@ def benchmark(args: argparse.Namespace) -> None:
     records = []
 
     for i in range(settings.repeats):
-        print(f"Measured run {i + 1}/{settings.repeats}...")
+        if args.cold:
+            unload_model(model.name)
+        print(f"Measured run {i + 1}/{settings.repeats} ({'cold' if args.cold else 'warm'})...")
         measured = measured_run(model, args.prompt, settings, args)
         record = {
             "timestamp": utc_timestamp(),
             "run_id": run_id,
             "run_type": "benchmark",
             "run_index": i + 1,
+            "start": "cold" if args.cold else "warm",
             **run_fields(settings, model),
             **measured,
         }
@@ -290,6 +302,19 @@ def latest_suite_runs(records: list[dict[str, Any]], models: list[ModelEntry]) -
     return [latest[m.name] for m in chosen]
 
 
+def latest_cold_start(records: list[dict[str, Any]], model: str) -> dict[str, Any] | None:
+    """The summary of the model's latest cold benchmark in the log, if it has one."""
+    cold = [
+        r
+        for r in records
+        if r.get("run_type") == "benchmark" and r.get("start") == "cold" and r.get("model") == model
+    ]
+    if not cold:
+        return None
+    run_id = str(cold[-1]["run_id"])  # the log is append-only: the last one is the latest
+    return run_summary(run_id, [r for r in cold if r["run_id"] == run_id])
+
+
 def report_command(args: argparse.Namespace) -> None:
     log = run_log(args)
     records = read_jsonl(log)
@@ -303,7 +328,8 @@ def report_command(args: argparse.Namespace) -> None:
     results = []
     for run_id in run_ids:
         _, selected = select_run(records, run_id)
-        results.append(report.model_result(run_id, selected, suite, manifests.get(run_id)))
+        result = report.model_result(run_id, selected, suite, manifests.get(run_id))
+        results.append(report.with_cold_start(result, latest_cold_start(records, result.model)))
     path = report.write_report(results, args.out_dir, args.title)
     found = report.verdict(results)
     print(f"Most accurate: {found.most_accurate}")
@@ -385,6 +411,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_bench.add_argument("--prompt", required=True)
     p_bench.add_argument("--repeats", type=int, help="measured runs (default: 5)")
     p_bench.add_argument("--warmup-runs", type=int, help="unrecorded runs first (default: 1)")
+    p_bench.add_argument(
+        "--cold",
+        action="store_true",
+        help="unload the model before every measured run, so each one includes loading it; "
+        "no warm-up runs",
+    )
     p_bench.set_defaults(func=benchmark)
 
     suite_help = "suite file (default: benchmarks/support_triage_v1.jsonl in the project folder)"

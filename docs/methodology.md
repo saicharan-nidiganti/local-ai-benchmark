@@ -71,6 +71,24 @@ the highest median decode speed; **best tradeoff** is the fastest model whose ov
 quality is within 0.05 of the most accurate one, the choice a team deploying on this laptop
 would make. The margin is a project constant (`TRADEOFF_MARGIN`), stated in every report.
 
+### Latency targets
+
+Interactive use has three limits, each judged on a measured median
+(`src/local_ai_benchmark/targets.py`):
+
+| Target | Limit | Why |
+| --- | --- | --- |
+| First token, model loaded | ≤ 1,000 ms | 1 s is the limit for a user's flow of thought to stay uninterrupted (Nielsen, *Response Times: The 3 Important Limits*, 1993) |
+| Decode speed | ≥ 10 tokens/s | About twice average adult silent reading, 238 words a minute (Brysbaert, *Journal of Memory and Language* 109, 2019), near 5 tokens/s at 1.3 tokens a word |
+| First token, model not loaded | ≤ 10,000 ms | 10 s is the limit for keeping a user's attention on the task (Nielsen, 1993) |
+
+Warm figures come from the suite run, after its warm-up. The cold first token comes from
+`benchmark --cold`, which unloads the model before every measured run (Ollama's
+`keep_alive: 0`) and waits until it is gone, so each run includes loading it. The model file
+may still be in the operating system's file cache, so this is a cold start of the runtime,
+not of the disk; a first start after a reboot is slower. `report` adds the targets table when
+a model has a cold benchmark in the log.
+
 ### Resource use
 
 While each measured run executes, a background thread samples every 0.5 s

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import ipaddress
 import os
+import time
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
@@ -112,3 +113,14 @@ def loaded_model(name: str) -> LoadedModel | None:
                 context_length=model.context_length,
             )
     return None
+
+
+def unload(name: str, timeout_s: float = 30.0, poll_s: float = 0.2) -> None:
+    """Unload a model so the next request loads it again (a cold start), and wait until
+    Ollama no longer lists it. Raises TimeoutError if it is still loaded after `timeout_s`."""
+    ollama.generate(model=name, prompt="", keep_alive=0)
+    deadline = time.monotonic() + timeout_s
+    while loaded_model(name) is not None:
+        if time.monotonic() > deadline:
+            raise TimeoutError(f"{name} is still loaded after {timeout_s:.0f} s")
+        time.sleep(poll_s)
