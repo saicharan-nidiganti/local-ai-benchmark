@@ -44,7 +44,7 @@ flowchart LR
 | Manifests | JSON Lines, `data/raw/manifests.jsonl` | One line per run ID, git-ignored | [ADR-0007](decisions/0007-run-identity-and-manifests.md) |
 | Configuration | YAML, `configs/benchmark.yaml` and `configs/models.yaml` | Versioned in git | Read on every command; flags override ([ADR-0006](decisions/0006-configuration-and-pinned-settings.md)) |
 | Task suites | JSON Lines, `benchmarks/support_triage_v1.jsonl` | Versioned in git | 15 fictional tickets, 45 tasks ([benchmarks/README.md](../benchmarks/README.md), [ADR-0008](decisions/0008-use-case-support-ticket-triage.md)) |
-| Reports | A results folder: `README.md`, `quality_vs_speed.svg`, `summaries.json`, `manifests.json` | Curated output committed under `results/` | Written by `report` |
+| Reports | A results folder: `README.md`, `quality_vs_speed.svg`, `summaries.json`, `manifests.json`, and `cold_starts.json` and `cost.json` when they apply | Curated output committed under `results/` | Written by `report` |
 
 ## 3. Components
 

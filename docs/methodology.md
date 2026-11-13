@@ -79,7 +79,7 @@ Interactive use has three limits, each judged on a measured median
 | Target | Limit | Why |
 | --- | --- | --- |
 | First token, model loaded | ≤ 1,000 ms | 1 s is the limit for a user's flow of thought to stay uninterrupted (Nielsen, *Response Times: The 3 Important Limits*, 1993) |
-| Decode speed | ≥ 10 tokens/s | About twice average adult silent reading, 238 words a minute (Brysbaert, *Journal of Memory and Language* 109, 2019), near 5 tokens/s at 1.3 tokens a word |
+| Decode speed | ≥ 10 tokens/s | Faster than average adult silent reading, 238 words a minute (Brysbaert, *Journal of Memory and Language* 109, 2019): 5 to 6.5 tokens/s at the 1.3 to 1.6 tokens a word the compared models' summaries use (measured in the Phase 4 runs) |
 | First token, model not loaded | ≤ 10,000 ms | 10 s is the limit for keeping a user's attention on the task (Nielsen, 1993) |
 
 Warm figures come from the suite run, after its warm-up. The cold first token comes from

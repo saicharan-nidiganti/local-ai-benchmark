@@ -24,6 +24,20 @@ All notable changes to this project are recorded here. The format follows
   (Telangana tariff, laptop price and lifetime, exchange rate, hosted prices) is sourced and
   dated in the file, and `cost.json` holds the figures
   ([#29](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/29)).
+- Results: privacy, latency and cost measured with networking off. The same 135 replies as
+  online and 0 connections to another machine; every model meets every latency target
+  (first token 92 to 203 ms loaded, 3.3 to 4.5 s cold; 29 to 52 tokens/s); GPU electricity
+  INR 1.93 to 3.57 per million output tokens against INR 18.90 to 31.18 hosted. `report`
+  writes `cold_starts.json` and lists the cold run IDs
+  ([#27](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/27),
+  [#28](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/28),
+  [#29](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/29)).
+
+### Changed
+
+- The decode-speed target's reason uses the measured 1.3 to 1.6 tokens a word of the compared
+  models' summaries instead of an assumed 1.3
+  ([#28](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/28)).
 
 ## [0.2.0] - 2026-11-13
 

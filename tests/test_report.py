@@ -193,14 +193,15 @@ def test_runs_from_before_the_audit_have_no_privacy_section():
 
 def test_a_cold_start_adds_the_latency_targets():
     warm = result("r1", "a", 0.9, 30.0)
-    cold = {"median_ttft_ms": 4200.0}
+    cold = {"run_id": "c1", "median_ttft_ms": 4200.0}
     results = [report.with_cold_start(warm, cold), result("r2", "b", 0.8, 8.0)]
 
     text = report.render_markdown(results, "x", "chart.svg")
 
     assert "## Latency targets for interactive use" in text
-    assert "| a | 50.0: meets | 30.0: meets | 4,200.0: meets |" in text
-    assert "| b | 50.0: meets | 8.0: misses | not measured |" in text
+    assert "| a | 50: meets | 30.0: meets | 4,200: meets |" in text
+    assert "| b | 50: meets | 8.0: misses | not measured |" in text
+    assert "Cold benchmarks: a `c1`" in text
 
 
 def test_without_cold_starts_there_is_no_latency_section():
@@ -242,3 +243,17 @@ def test_without_cost_assumptions_there_is_no_cost_section(tmp_path):
 
     assert "## Cost" not in (tmp_path / "README.md").read_text(encoding="utf-8")
     assert not (tmp_path / "cost.json").exists()
+
+
+def test_cold_start_summaries_are_saved_beside_the_report(tmp_path):
+    results = [
+        report.with_cold_start(
+            result("r1", "a", 0.9, 30.0), {"run_id": "c1", "median_ttft_ms": 4.2e3}
+        ),
+        result("r2", "b", 0.8, 50.0),
+    ]
+
+    report.write_report(results, tmp_path, "x")
+
+    saved = json.loads((tmp_path / "cold_starts.json").read_text(encoding="utf-8"))
+    assert saved == {"a": {"run_id": "c1", "median_ttft_ms": 4200.0}, "b": None}

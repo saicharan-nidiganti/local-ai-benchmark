@@ -1,0 +1,98 @@
+{
+  "assumptions": {
+    "currency": "INR",
+    "electricity": {
+      "source": "https://www.tgerc.telangana.gov.in/file_upload/uploads/Tariff%20Orders/Current%20Year%20Orders/2025/RST%20Order%20FY%202025-26%20FINAL.pdf",
+      "as_of": "2026-11-13",
+      "note": "TGSPDCL domestic tariff LT-I(B)(ii), 201 to 300 units a month: the marginal rate of a household in that band. FY 2025-26 retail supply tariff, TGERC order of 29 April 2025, unchanged in its November 2025 order.",
+      "price_per_kwh": 7.7
+    },
+    "hardware": {
+      "source": "https://www.smartprix.com/laptops/asus-rog-strix-g15-g513qc-hn125t-gaming-laptop-ppd1a5hw9yhe",
+      "as_of": "2026-11-13",
+      "note": "Retail listing of the ASUS ROG Strix G15 G513QC-HN125T (Ryzen 9 5900HX, RTX 3050 Laptop 4 GB, 16 GB, 1 TB), last changed 21 April 2025; the 2021 launch price could not be confirmed. Counted as if the laptop did nothing else.",
+      "price": 108990.0,
+      "lifetime_years": 4.0,
+      "hours_per_day": 8.0
+    },
+    "exchange": {
+      "source": "https://www.fbil.org.in/",
+      "as_of": "2026-11-05",
+      "note": "FBIL reference rate, 4 pm, 5 November 2026.",
+      "usd_to_local": 94.4776
+    },
+    "hosted": {
+      "qwen3:4b-instruct": {
+        "source": "https://pricepertoken.com/pricing-page/model/qwen-qwen3-4b-instruct-2507",
+        "as_of": "2026-11-13",
+        "note": "Third-party listing; Fireworks was the only provider listed.",
+        "provider": "Fireworks AI (Qwen3-4B-Instruct-2507)",
+        "input_per_million_usd": 0.2,
+        "output_per_million_usd": 0.2
+      },
+      "phi4-mini": {
+        "source": "https://prices.azure.com/api/retail/prices?$filter=productName%20eq%20%27Azure%20Phi%20Models%27",
+        "as_of": "2026-11-13",
+        "note": "Azure Retail Prices API, meters Phi-4-Mini-Input and Phi-4-Mini-Output Tokens, effective 1 February 2025.",
+        "provider": "Azure AI Foundry (Phi-4-mini)",
+        "input_per_million_usd": 0.075,
+        "output_per_million_usd": 0.3
+      },
+      "llama3.2:3b": {
+        "source": "https://openrouter.ai/meta-llama/llama-3.2-3b-instruct",
+        "as_of": "2026-11-13",
+        "note": "The cheaper of the two providers OpenRouter listed (Cloudflare 0.0509 and 0.335).",
+        "provider": "Parasail via OpenRouter (Llama 3.2 3B Instruct)",
+        "input_per_million_usd": 0.05,
+        "output_per_million_usd": 0.33
+      }
+    }
+  },
+  "models": {
+    "qwen3:4b-instruct": {
+      "tasks": 45,
+      "prompt_tokens": 6567,
+      "output_tokens": 1414,
+      "gpu_energy_j": 2361.1,
+      "busy_s": 57.6,
+      "electricity_per_million": 3.5715,
+      "hardware_per_million": 105.5348,
+      "local_per_million": 109.1063,
+      "hosted_per_million_output": 18.8955,
+      "electricity_per_1000_tasks": 0.1122,
+      "local_per_1000_tasks": 3.4284,
+      "hosted_per_1000_tasks": 3.3512,
+      "hosted_provider": "Fireworks AI (Qwen3-4B-Instruct-2507)"
+    },
+    "phi4-mini": {
+      "tasks": 45,
+      "prompt_tokens": 6162,
+      "output_tokens": 1378,
+      "gpu_energy_j": 1967.0,
+      "busy_s": 52.0,
+      "electricity_per_million": 3.0531,
+      "hardware_per_million": 97.7271,
+      "local_per_million": 100.7802,
+      "hosted_per_million_output": 28.3433,
+      "electricity_per_1000_tasks": 0.0935,
+      "local_per_1000_tasks": 3.0861,
+      "hosted_per_1000_tasks": 1.8382,
+      "hosted_provider": "Azure AI Foundry (Phi-4-mini)"
+    },
+    "llama3.2:3b": {
+      "tasks": 45,
+      "prompt_tokens": 7227,
+      "output_tokens": 1540,
+      "gpu_energy_j": 1390.3,
+      "busy_s": 35.1,
+      "electricity_per_million": 1.931,
+      "hardware_per_million": 59.0004,
+      "local_per_million": 60.9314,
+      "hosted_per_million_output": 31.1776,
+      "electricity_per_1000_tasks": 0.0661,
+      "local_per_1000_tasks": 2.0852,
+      "hosted_per_1000_tasks": 1.8256,
+      "hosted_provider": "Parasail via OpenRouter (Llama 3.2 3B Instruct)"
+    }
+  }
+}

@@ -42,9 +42,9 @@ DECODE_SPEED = Target(
     limit=10.0,
     higher_is_better=True,
     unit="tokens/s",
-    reason="about twice average adult silent reading, 238 words a minute (Brysbaert, Journal "
-    "of Memory and Language 109, 2019), which is near 5 tokens/s at 1.3 tokens a word, so "
-    "text arrives faster than it is read",
+    reason="faster than average adult silent reading, 238 words a minute (Brysbaert, Journal "
+    "of Memory and Language 109, 2019): 5 to 6.5 tokens/s at the 1.3 to 1.6 tokens a word "
+    "the compared models' summaries use, so text arrives faster than it is read",
 )
 COLD_FIRST_TOKEN = Target(
     key="cold_ttft_ms",
