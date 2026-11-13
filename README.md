@@ -31,13 +31,14 @@ more speed and 23% less energy. llama3.2:3b is the fastest and as good at classi
 and extraction, but its summaries miss facts.
 [Full results](results/2026-11-13-three-model-comparison/).
 
-> **Status: Phase 3 of 6 complete, release v0.2.0.** Measurement harness, task suite and
-> three-model comparison are done. Next, Phase 4 measures the privacy, latency and cost
-> constraints; Phase 5 ships the offline app. See [Project status](#project-status).
+> **Status: Phase 4 of 6 complete, release v0.2.0.** Measurement harness, task suite,
+> three-model comparison, and privacy, latency and cost measured with networking off are
+> done. Next, Phase 5 ships the offline app. See [Project status](#project-status).
 
 ## Contents
 
 - [Results](#results)
+- [Tradeoffs: privacy, latency and cost](#tradeoffs-privacy-latency-and-cost)
 - [Why the numbers can be trusted](#why-the-numbers-can-be-trusted)
 - [How it works](#how-it-works)
 - [What it measures](#what-it-measures)
@@ -71,8 +72,51 @@ and summarized.
 
 | Experiment | Finding |
 | --- | --- |
+| [Privacy, latency and cost, offline](results/2026-11-13-offline-privacy-latency-cost/) | With networking off: the same 135 replies and 0 connections to another machine; every model meets every latency target; cost per model against the same model hosted |
 | [Three-model comparison](results/2026-11-13-three-model-comparison/) | Findings, chart, quality per task and ticket category, speed, resources, run identities, limits, how to reproduce |
 | [qwen3:4b baseline](results/2026-11-13-qwen3-4b-baseline/) | 30.8 tokens/s, 47 ms to the first token warm, 600 tokens/s prefill, 320 J per 256-token answer |
+
+## Tradeoffs: privacy, latency and cost
+
+Measured with networking off on the reference laptop, the three models above
+([results](results/2026-11-13-offline-privacy-latency-cost/)). The hosted column is the same
+models' published API prices on 13 November 2026; hosted latency was not measured here.
+
+| | Local, this laptop | Hosted API, same model |
+| --- | --- | --- |
+| Where prompts and replies go | Nowhere: 0 connections to another machine in 150 runs with networking off | To the provider, every request |
+| Without a network | Works: the same 135 replies, byte for byte, as online | Does not work |
+| First token | 92 to 203 ms with the model loaded; a median 3.3 to 4.5 s after an unload | Not measured here; includes the network round trip |
+| Decode speed | 29 to 52 tokens/s, 3 to 5 times the 10 tokens/s target | Not measured here |
+| Per million output tokens | INR 1.93 to 3.57 of GPU electricity; INR 61 to 109 counting the laptop's whole price | INR 18.90 to 31.18 |
+| Per 1,000 triage tasks | INR 0.07 to 0.11 of electricity; INR 2.09 to 3.43 with the laptop | INR 1.83 to 3.35 |
+| Models that fit | 3B to 4B at 4-bit, 64 to 80% of each on the 4 GB GPU | Any size the provider offers |
+
+**Where local wins**
+
+- **Data that must not leave the machine.** Support tickets carry names, order numbers and
+  account details. Here that is enforced (a remote runtime is refused) and audited on every
+  run, not only promised.
+- **No network, or an unreliable one.** Every task completes offline with the same answers.
+- **A machine you already own.** The extra cost is electricity: 5 to 16 times below the hosted
+  price per output token, 20 to 30 times per task, because hosted APIs also bill the 137 to
+  161 prompt tokens of every task.
+- **Interactive use.** With the model loaded, the first token arrives in 0.1 to 0.2 s, five to
+  ten times inside the 1 s limit for an uninterrupted flow of thought.
+
+**Where a hosted model is the better choice**
+
+- **Hardware bought only for this.** At 8 hours a day for 4 years, the laptop's price makes
+  local 2 to 6 times the hosted price per token.
+- **Quality beyond a 4B model.** The best model here scores 0.89 and over-escalates ticket
+  priority; larger hosted models are a request away, if the data may leave the machine.
+- **High or bursty volume.** One laptop decodes 29 to 52 tokens/s; a hosted API scales with
+  demand.
+- **Rare, occasional use.** A model that is not loaded takes 3 to 7 s to its first token here.
+
+The local energy is the GPU board's alone, so local electricity is a lower bound; every price,
+the tariff and the exchange rate are sourced and dated in
+[configs/cost.yaml](configs/cost.yaml).
 
 ## Why the numbers can be trusted
 
@@ -232,7 +276,7 @@ make check                    # lint, strict type check, tests with coverage
 Without make (for example in Windows PowerShell), run the commands listed in
 [CONTRIBUTING.md](CONTRIBUTING.md#everyday-commands).
 
-- **Offline tests.** 153 tests replace the Ollama client with a simulated token stream, so they
+- **Offline tests.** 201 tests replace the Ollama client with a simulated token stream, so they
   need no model, server or GPU. Coverage is 97% against a floor of 90%.
 - **Strict checks.** Ruff for lint and format, mypy `--strict`, pre-commit hooks.
 - **CI on every pull request**, all seven required to merge: lint and types, tests on Python 3.11
@@ -251,8 +295,8 @@ Each phase is a milestone; each task is an issue with acceptance criteria.
 | 1. Measurement harness | Reproducible timing, manifests and resource sampling | Done | [v0.1.0](https://github.com/saicharan-nidiganti/local-ai-benchmark/releases/tag/v0.1.0) |
 | 2. Task suite | Quality scoring for one privacy-sensitive use case | Done; optional [#22](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/22) open | |
 | 3. Model comparison | Three models, same hardware and settings, quality against speed | Done; optional [#26](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/26) open | v0.2.0 |
-| 4. Privacy, latency and cost | Constraints measured, not asserted | [Next](https://github.com/saicharan-nidiganti/local-ai-benchmark/milestone/5) | |
-| 5. Offline app | A usable app on the recommended model | [Planned](https://github.com/saicharan-nidiganti/local-ai-benchmark/milestone/6) | v1.0.0 |
+| 4. Privacy, latency and cost | Constraints measured, not asserted | Done | |
+| 5. Offline app | A usable app on the recommended model | [Next](https://github.com/saicharan-nidiganti/local-ai-benchmark/milestone/6) | v1.0.0 |
 
 Gates and requirements per phase: [docs/roadmap.md](docs/roadmap.md) and
 [docs/requirements.md](docs/requirements.md). Every milestone:

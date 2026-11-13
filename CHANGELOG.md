@@ -35,6 +35,10 @@ All notable changes to this project are recorded here. The format follows
 
 ### Changed
 
+- README: a Tradeoffs section, local against hosted for privacy, latency and cost, each line
+  backed by a measured or cited number, with where local wins and where a hosted model is the
+  better choice; status at Phase 4 of 6
+  ([#30](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/30)).
 - The decode-speed target's reason uses the measured 1.3 to 1.6 tokens a word of the compared
   models' summaries instead of an assumed 1.3
   ([#28](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/28)).
