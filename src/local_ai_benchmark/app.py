@@ -1,9 +1,9 @@
 """The offline triage app: one support ticket in; its category, priority, fields and a short
 summary out, from the recommended model on this machine (ADR-0012).
 
-It asks the model exactly what the suite measured (the same prompts, and the same JSON schemas
-as Ollama's structured output), keeps nothing (no log, no file), and talks to nothing but the
-local Ollama server.
+It asks the model what the suite measured: the suite's prompts, with the priority rubric for
+classification, and the same JSON schemas as Ollama's structured output. It keeps nothing
+(no log, no file), and talks to nothing but the local Ollama server.
 """
 
 from __future__ import annotations
@@ -17,11 +17,14 @@ from pydantic import BaseModel, ValidationError
 from .config import GenerationSettings
 from .inference import InferenceResult
 from .scorers import JSON_SCHEMAS, ClassifyOutput, ExtractOutput, parse_json_object
-from .suite import PROMPTS, TASK_KINDS
+from .suite import PROMPT_VARIANTS, TASK_KINDS
 
 # The best tradeoff of the three-model comparison (results/2026-11-13-three-model-comparison):
 # the quality of qwen3:4b-instruct at 14% more speed and 23% less energy.
 RECOMMENDED_MODEL = "phi4-mini"
+# The rubric took phi4-mini from 8 to 14 of 15 right priorities on the suite, with the category
+# unchanged and no measurable time cost (results/2026-11-13-priority-rubric).
+PROMPT_VARIANT = "rubric"
 # About 1,000 tokens: with the prompt and the answer, well inside the 4,096-token context.
 MAX_TICKET_CHARS = 4000
 
@@ -100,7 +103,7 @@ def triage(
     results = {
         kind: generate(
             model=model,
-            prompt=PROMPTS[kind].format(ticket=text),
+            prompt=PROMPT_VARIANTS[PROMPT_VARIANT][kind].format(ticket=text),
             settings=settings,
             output_format=JSON_SCHEMAS.get(kind),
         )

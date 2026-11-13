@@ -11,6 +11,7 @@ import pytest
 from local_ai_benchmark import app, web
 from local_ai_benchmark.config import GenerationSettings
 from local_ai_benchmark.inference import InferenceResult
+from local_ai_benchmark.suite import PROMPTS
 
 TICKET = "Hello, order ORD-1 arrived broken. Please refund me. - Ana Silva"
 REPLIES = {
@@ -198,3 +199,15 @@ def test_unknown_paths_are_not_found_and_health_names_the_model(server):
 
 def test_the_example_ticket_is_fictional():
     assert "@example.com" in web.EXAMPLE_TICKET
+
+
+def test_the_app_classifies_with_the_priority_rubric_and_keeps_the_other_prompts():
+    calls = []
+
+    app.triage(TICKET, "phi4-mini", SETTINGS, fake(calls=calls))
+
+    prompts = {kind: prompt for kind, _, prompt in calls}
+    assert app.PROMPT_VARIANT == "rubric"
+    assert "Choose the lowest priority that fits." in prompts["classify"]
+    assert prompts["extract"] == PROMPTS["extract"].format(ticket=TICKET)
+    assert prompts["summarize"] == PROMPTS["summarize"].format(ticket=TICKET)

@@ -6,6 +6,13 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The app (`triage`, `serve`) classifies with the priority rubric: phi4-mini rated 14 of the
+  suite's 15 priorities right with it, up from 8, with the category unchanged and no
+  measurable time cost. Extraction, summaries and the benchmark's default prompt are
+  unchanged ([#78](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/78)).
+
 ### Added
 
 - Prompt variants: `suite --prompt-variant rubric` classifies with a sharper priority rubric
