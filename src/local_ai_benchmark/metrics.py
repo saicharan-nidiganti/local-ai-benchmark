@@ -153,6 +153,12 @@ def suite_summary(run_id: str, records: list[Record]) -> Record:
         "model": records[0].get("model") if records else None,
         "suite": records[0].get("suite") if records else None,
         "json_mode": next((r["json_mode"] for r in structured if r.get("json_mode")), None),
+        # older runs have no prompt_variant field; their summaries stay as they were
+        **(
+            {"prompt_variant": records[0]["prompt_variant"]}
+            if records and records[0].get("prompt_variant")
+            else {}
+        ),
         "tasks": len(records),
         "quality": {
             "overall": _mean(scores),

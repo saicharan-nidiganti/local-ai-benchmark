@@ -12,7 +12,10 @@ import pytest
 from local_ai_benchmark.suite import (
     CATEGORIES,
     PRIORITIES,
+    PROMPT_VARIANTS,
+    RUBRIC_EXAMPLES,
     SUMMARY_MAX_WORDS,
+    TASK_KINDS,
     SuiteError,
     load_suite,
 )
@@ -115,3 +118,40 @@ def test_rejects_a_fact_without_any_wording_and_unknown_keys(tmp_path):
     row = valid_row(notes="extra")
     with pytest.raises(SuiteError, match="notes"):
         load_suite(write(tmp_path, row))
+
+
+def test_the_rubric_variant_changes_only_the_classify_prompt():
+    suite = load_suite(
+        Path(__file__).resolve().parents[1] / "benchmarks" / "support_triage_v1.jsonl"
+    )
+    default = {t.id: t.prompt for t in suite.tasks()}
+
+    for task in suite.tasks("rubric"):
+        if task.kind == "classify":
+            assert task.prompt != default[task.id]
+            assert "Choose the lowest priority that fits." in task.prompt
+            assert task.prompt.count("Answer: {") == len(RUBRIC_EXAMPLES)
+            assert task.prompt.endswith("Ticket:\n" + task.ticket.ticket)
+        else:
+            assert task.prompt == default[task.id]
+
+
+def test_the_worked_examples_share_no_phrase_with_the_suite():
+    # the suite must stay unseen: no run of five words in an example appears in any ticket
+    suite = load_suite(
+        Path(__file__).resolve().parents[1] / "benchmarks" / "support_triage_v1.jsonl"
+    )
+
+    def runs(text):
+        words = re.findall(r"[a-z0-9]+", text.lower())
+        return {" ".join(words[i : i + 5]) for i in range(len(words) - 4)}
+
+    tickets = set().union(*(runs(t.ticket) for t in suite.tickets))
+    for text, category, priority in RUBRIC_EXAMPLES:
+        assert not runs(text) & tickets, text
+        assert category in CATEGORIES and priority in PRIORITIES
+
+
+def test_every_variant_names_all_three_prompts():
+    assert set(PROMPT_VARIANTS) == {"default", "rubric"}
+    assert all(set(prompts) == set(TASK_KINDS) for prompts in PROMPT_VARIANTS.values())

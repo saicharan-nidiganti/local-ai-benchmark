@@ -64,6 +64,13 @@ recovered object, so a model is not punished twice for formatting; the strict ra
 reported beside it. **Schema-valid** means the object has the required keys and labels from
 the allowed sets.
 
+**Prompt variants** (`suite --prompt-variant`). The suite version's own prompts are the
+`default`; a named variant replaces some of them, and every record and summary names the one
+it used, so results from different variants are never mixed. `rubric` replaces the classify
+prompt with a sharper priority rubric ("choose the lowest priority that fits"; a delay, or
+anything with a workaround, is medium; a request is low) and five worked examples written for
+it, which share no five-word phrase with any suite ticket (a test checks).
+
 **Bounded repair** (`suite --repair N`, N at most 2) re-asks a JSON task whose reply is not
 schema-valid: the same task again, with the rejected reply and what was wrong with it, since
 the runtime keeps no conversation. The final reply is scored; the first attempt's score and

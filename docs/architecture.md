@@ -234,6 +234,7 @@ Suite records (`run_type: "suite"`) add:
 | `json_strict` | boolean or null | The whole reply is one JSON object; null for summaries |
 | `json_valid` | boolean or null | A JSON object could be recovered from the reply |
 | `schema_valid` | boolean or null | The object has the required keys and allowed labels |
+| `prompt_variant` | text | The prompt set the suite run used: `default` or a named variant; suite records only, absent before variants existed |
 | `repair_attempts`, `repair_ms` | integer, number | Bounded repair (`--repair`): re-asks of a JSON task and their total time; JSON tasks only, and only with repair on |
 | `first_score`, `first_json_valid`, `first_schema_valid` | number, booleans | The first attempt's score and validity, before any repair |
 | `repaired_response` | text or null | The reply that was scored after a repair |

@@ -6,6 +6,13 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Prompt variants: `suite --prompt-variant rubric` classifies with a sharper priority rubric
+  and five worked examples written for it (a test checks they share no phrase with the
+  suite); every suite record and summary names its variant, and `default` stays the suite's
+  own prompts ([#74](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/74)).
+
 ## [1.1.0] - 2026-11-13
 
 ### Added
