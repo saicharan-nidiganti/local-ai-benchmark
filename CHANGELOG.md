@@ -6,6 +6,8 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-13
+
 ### Added
 
 - Results: phi4-mini at Q4_K_M against Q8_0. Q8_0 keeps 44% of itself on the 4 GB GPU
@@ -210,7 +212,8 @@ The measurement harness (Phase 1) and the first published baseline.
   (or the folder named by `LOCAL_AI_BENCHMARK_HOME`)
   ([#16](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/16)).
 
-[Unreleased]: https://github.com/saicharan-nidiganti/local-ai-benchmark/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/saicharan-nidiganti/local-ai-benchmark/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/saicharan-nidiganti/local-ai-benchmark/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/saicharan-nidiganti/local-ai-benchmark/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/saicharan-nidiganti/local-ai-benchmark/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/saicharan-nidiganti/local-ai-benchmark/releases/tag/v0.1.0
