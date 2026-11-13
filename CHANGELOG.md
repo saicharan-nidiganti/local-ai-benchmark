@@ -12,6 +12,11 @@ All notable changes to this project are recorded here. The format follows
   rules as v1 and committed before any model was run on them, to check the priority rubric on
   tickets it was not drawn from; a test checks it shares no phrase with v1 or the rubric's
   examples ([#82](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/82)).
+- Results: the priority rubric on the held-out tickets. Every model gets 13 of 15 priorities
+  right with it, from 10, 6 and 10; over-escalations fall from 15 to 2. qwen3:4b-instruct's
+  gain is half its gain on v1; every model rates a stopped business high instead of urgent;
+  phi4-mini loses two categories. The app keeps the rubric
+  ([#82](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/82)).
 
 ## [1.2.0] - 2026-11-13
 

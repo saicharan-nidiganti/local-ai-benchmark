@@ -26,6 +26,7 @@ only when their prompts contain nothing personal or confidential.
 
 | Experiment | Model | Finding |
 | --- | --- | --- |
+| [2026-11-13 the rubric on held-out tickets](2026-11-13-priority-rubric-holdout/) | qwen3:4b-instruct, phi4-mini, llama3.2:3b | On 15 new tickets labelled before any run, the rubric takes every model to 13 of 15 right priorities (from 10, 6 and 10) and over-escalations from 15 to 2; it rates a stopped business high, and costs phi4-mini two categories |
 | [2026-11-13 a priority rubric](2026-11-13-priority-rubric/) | qwen3:4b-instruct, phi4-mini, llama3.2:3b | The rubric prompt takes priority from 9 to 15 and from 8 to 14 of 15 for qwen3:4b-instruct and phi4-mini, with categories unchanged and no measurable time cost; llama3.2:3b swaps over-escalation for under-escalation |
 | [2026-11-13 JSON from the schema or the prompt, with repair](2026-11-13-json-mode-and-repair/) | qwen3:4b-instruct, phi4-mini, llama3.2:3b, qwen3:4b | Prompt-only JSON is valid for the three instruct models (phi4-mini fences 27 of 30, 22% slower); the thinking build fails all 30 and two repairs each rescue none; schema mode stays the default |
 | [2026-11-13 phi4-mini, Q4_K_M against Q8_0](2026-11-13-phi4-mini-q4-vs-q8/) | phi4-mini, phi4-mini:3.8b-q8_0 | Q8_0 does not fit in 4 GB (44% on the GPU against 64%): 2.3 times slower, 1.8 times the GPU energy per task, 0.909 against 0.887 quality, mostly better priorities; Q4_K_M stays the pick |

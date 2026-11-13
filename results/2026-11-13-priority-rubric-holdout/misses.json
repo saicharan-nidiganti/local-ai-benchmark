@@ -1,0 +1,57 @@
+{
+  "qwen3:4b-instruct default": [
+    "H01 category billing->account",
+    "H02 priority medium->high",
+    "H03 priority low->medium",
+    "H04 category refund->billing",
+    "H06 category refund->billing",
+    "H06 priority low->medium",
+    "H09 priority low->medium",
+    "H15 priority low->medium"
+  ],
+  "qwen3:4b-instruct rubric": [
+    "H03 category billing->account",
+    "H04 category refund->billing",
+    "H06 category refund->billing",
+    "H09 priority low->medium",
+    "H10 priority urgent->high"
+  ],
+  "phi4-mini default": [
+    "H02 priority medium->high",
+    "H03 priority low->medium",
+    "H04 category refund->billing",
+    "H05 priority medium->high",
+    "H06 priority low->medium",
+    "H07 priority high->urgent",
+    "H09 priority low->medium",
+    "H10 priority urgent->high",
+    "H12 priority medium->low",
+    "H14 priority medium->high"
+  ],
+  "phi4-mini rubric": [
+    "H01 category billing->account",
+    "H03 category billing->account",
+    "H04 category refund->billing",
+    "H06 priority low->medium",
+    "H10 priority urgent->high"
+  ],
+  "llama3.2:3b default": [
+    "H01 category billing->account",
+    "H03 category billing->account",
+    "H03 priority low->medium",
+    "H04 category refund->billing",
+    "H06 category refund->account",
+    "H07 priority high->urgent",
+    "H09 priority low->medium",
+    "H10 priority urgent->high",
+    "H13 priority urgent->medium"
+  ],
+  "llama3.2:3b rubric": [
+    "H01 category billing->account",
+    "H04 category refund->billing",
+    "H05 category refund->billing",
+    "H06 category refund->account",
+    "H10 priority urgent->high",
+    "H14 priority medium->low"
+  ]
+}
