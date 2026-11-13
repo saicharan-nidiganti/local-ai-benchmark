@@ -54,7 +54,8 @@ values such as `null`, `none` or `N/A` count as no value.
 
 By default the JSON tasks run with **structured output**: the task's JSON schema is sent as
 Ollama's `format`, so the runtime constrains the reply to it, as the offline app will. With
-`--json-mode prompt` the prompt alone asks for JSON; the two modes are compared in #22 and
+`--json-mode prompt` the prompt alone asks for JSON; the two modes are compared, with bounded
+repair, in [results/2026-11-13-json-mode-and-repair](../results/2026-11-13-json-mode-and-repair/), and
 are never mixed in one result ([ADR-0009](decisions/0009-structured-output-for-json-tasks.md)).
 
 JSON is judged in two steps: **strict** when the whole reply is one JSON object, and **valid**

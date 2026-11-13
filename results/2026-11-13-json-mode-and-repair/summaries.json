@@ -1,0 +1,765 @@
+[
+  {
+    "run_id": "20261113T132701Z-4df312",
+    "model": "qwen3:4b-instruct",
+    "suite": "support_triage_v1",
+    "json_mode": "schema",
+    "tasks": 30,
+    "quality": {
+      "overall": 0.875,
+      "classify": 0.7666666666666667,
+      "extract": 0.9833333333333333,
+      "summarize": null
+    },
+    "json": {
+      "strict_rate": 1.0,
+      "valid_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "first_attempt_valid_rate": 1.0,
+      "first_attempt_schema_valid_rate": 1.0,
+      "repair_rate": 0.0,
+      "repair_attempts": 0,
+      "first_attempt_quality": 0.875,
+      "final_quality": 0.875,
+      "repair_ms": 0.0
+    },
+    "speed": {
+      "runs": 30,
+      "successful_runs": 30,
+      "error_rate": 0.0,
+      "median_total_latency_ms": 1088.4463499996855,
+      "median_ttft_ms": 189.52569999964908,
+      "median_tokens_per_sec": 29.848749835915434,
+      "median_prefill_tokens_per_sec": 1044.936934771152,
+      "stats": {
+        "total_latency_ms": {
+          "n": 30,
+          "min": 462.97190000041155,
+          "p50": 1088.4463499996855,
+          "p90": 1904.166080000141,
+          "max": 1962.2020999995584,
+          "iqr": 1180.8488499987106
+        },
+        "ttft_ms": {
+          "n": 30,
+          "min": 52.28300000089803,
+          "p50": 189.52569999964908,
+          "p90": 199.60879999962344,
+          "max": 222.70810000009078,
+          "iqr": 9.519274999092886
+        },
+        "tokens_per_sec": {
+          "n": 30,
+          "min": 27.26847361620243,
+          "p50": 29.848749835915434,
+          "p90": 31.338775448510596,
+          "max": 31.709250564058785,
+          "iqr": 1.7965767183331067
+        },
+        "prefill_tokens_per_sec": {
+          "n": 30,
+          "min": 693.6487465510244,
+          "p50": 1044.936934771152,
+          "p90": 1324.5089854227567,
+          "max": 5927.564593437137,
+          "iqr": 470.1644748838929
+        },
+        "peak_runtime_rss_mb": {
+          "n": 30,
+          "min": 1682.6,
+          "p50": 1722.5,
+          "p90": 1724.0,
+          "max": 1724.7,
+          "iqr": 2.0499999999999545
+        },
+        "peak_gpu_memory_mb": {
+          "n": 30,
+          "min": 2317.0,
+          "p50": 2339.0,
+          "p90": 2339.0,
+          "max": 2339.0,
+          "iqr": 1.5
+        },
+        "mean_gpu_power_w": {
+          "n": 30,
+          "min": 24.69,
+          "p50": 45.269999999999996,
+          "p90": 51.977999999999994,
+          "max": 52.59,
+          "iqr": 6.464999999999996
+        },
+        "gpu_energy_j": {
+          "n": 30,
+          "min": 13.63,
+          "p50": 45.795,
+          "p90": 91.59299999999999,
+          "max": 94.86,
+          "iqr": 54.652499999999996
+        },
+        "gpu_offload_pct": {
+          "n": 30,
+          "min": 66.3,
+          "p50": 66.3,
+          "p90": 66.29999999999998,
+          "max": 66.3,
+          "iqr": 0.0
+        }
+      },
+      "remote_connections": 0
+    }
+  },
+  {
+    "run_id": "20261113T132746Z-09a244",
+    "model": "qwen3:4b-instruct",
+    "suite": "support_triage_v1",
+    "json_mode": "prompt",
+    "tasks": 30,
+    "quality": {
+      "overall": 0.875,
+      "classify": 0.7666666666666667,
+      "extract": 0.9833333333333333,
+      "summarize": null
+    },
+    "json": {
+      "strict_rate": 1.0,
+      "valid_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "first_attempt_valid_rate": 1.0,
+      "first_attempt_schema_valid_rate": 1.0,
+      "repair_rate": 0.0,
+      "repair_attempts": 0,
+      "first_attempt_quality": 0.875,
+      "final_quality": 0.875,
+      "repair_ms": 0.0
+    },
+    "speed": {
+      "runs": 30,
+      "successful_runs": 30,
+      "error_rate": 0.0,
+      "median_total_latency_ms": 1111.3345499998104,
+      "median_ttft_ms": 190.16449999980978,
+      "median_tokens_per_sec": 29.339278335425508,
+      "median_prefill_tokens_per_sec": 1012.8598996537856,
+      "stats": {
+        "total_latency_ms": {
+          "n": 30,
+          "min": 459.840700001223,
+          "p50": 1111.3345499998104,
+          "p90": 1943.365249999988,
+          "max": 2002.7313999999024,
+          "iqr": 1242.2607499997866
+        },
+        "ttft_ms": {
+          "n": 30,
+          "min": 48.47000000154367,
+          "p50": 190.16449999980978,
+          "p90": 202.3579199996675,
+          "max": 227.06879999896046,
+          "iqr": 10.770249999950465
+        },
+        "tokens_per_sec": {
+          "n": 30,
+          "min": 24.651448132512737,
+          "p50": 29.339278335425508,
+          "p90": 31.093603531144446,
+          "max": 31.635019479871612,
+          "iqr": 2.2116367850685847
+        },
+        "prefill_tokens_per_sec": {
+          "n": 30,
+          "min": 665.2704201059505,
+          "p50": 1012.8598996537856,
+          "p90": 1308.3978499992086,
+          "max": 5790.436083559594,
+          "iqr": 441.01188339647854
+        },
+        "peak_runtime_rss_mb": {
+          "n": 30,
+          "min": 1684.5,
+          "p50": 1722.4,
+          "p90": 1723.9,
+          "max": 1724.4,
+          "iqr": 2.174999999999727
+        },
+        "peak_gpu_memory_mb": {
+          "n": 30,
+          "min": 2317.0,
+          "p50": 2339.0,
+          "p90": 2339.0,
+          "max": 2339.0,
+          "iqr": 1.5
+        },
+        "mean_gpu_power_w": {
+          "n": 30,
+          "min": 24.88,
+          "p50": 38.985,
+          "p90": 49.05,
+          "max": 56.61,
+          "iqr": 7.539999999999992
+        },
+        "gpu_energy_j": {
+          "n": 30,
+          "min": 15.58,
+          "p50": 45.81,
+          "p90": 77.44500000000001,
+          "max": 95.69,
+          "iqr": 48.20999999999999
+        },
+        "gpu_offload_pct": {
+          "n": 30,
+          "min": 66.3,
+          "p50": 66.3,
+          "p90": 66.29999999999998,
+          "max": 66.3,
+          "iqr": 0.0
+        }
+      },
+      "remote_connections": 0
+    }
+  },
+  {
+    "run_id": "20261113T132835Z-08d18c",
+    "model": "phi4-mini",
+    "suite": "support_triage_v1",
+    "json_mode": "schema",
+    "tasks": 30,
+    "quality": {
+      "overall": 0.8416666666666667,
+      "classify": 0.7333333333333333,
+      "extract": 0.95,
+      "summarize": null
+    },
+    "json": {
+      "strict_rate": 1.0,
+      "valid_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "first_attempt_valid_rate": 1.0,
+      "first_attempt_schema_valid_rate": 1.0,
+      "repair_rate": 0.0,
+      "repair_attempts": 0,
+      "first_attempt_quality": 0.8416666666666667,
+      "final_quality": 0.8416666666666667,
+      "repair_ms": 0.0
+    },
+    "speed": {
+      "runs": 30,
+      "successful_runs": 30,
+      "error_rate": 0.0,
+      "median_total_latency_ms": 1029.3384500000684,
+      "median_ttft_ms": 213.1820999993579,
+      "median_tokens_per_sec": 32.47357159572458,
+      "median_prefill_tokens_per_sec": 943.9546144231106,
+      "stats": {
+        "total_latency_ms": {
+          "n": 30,
+          "min": 597.4554999993416,
+          "p50": 1029.3384500000684,
+          "p90": 1623.4010200010744,
+          "max": 1772.1885999999358,
+          "iqr": 830.8687499993539
+        },
+        "ttft_ms": {
+          "n": 30,
+          "min": 87.57329999934882,
+          "p50": 213.1820999993579,
+          "p90": 226.12226999954146,
+          "max": 232.18090000045777,
+          "iqr": 17.403625001861656
+        },
+        "tokens_per_sec": {
+          "n": 30,
+          "min": 26.5752659230135,
+          "p50": 32.47357159572458,
+          "p90": 34.76167259499138,
+          "max": 35.07128754948662,
+          "iqr": 2.2463284367698577
+        },
+        "prefill_tokens_per_sec": {
+          "n": 30,
+          "min": 600.6209645778943,
+          "p50": 943.9546144231106,
+          "p90": 1153.75759672227,
+          "max": 2711.3933019047877,
+          "iqr": 392.88802092548303
+        },
+        "peak_runtime_rss_mb": {
+          "n": 30,
+          "min": 1834.8,
+          "p50": 1871.1,
+          "p90": 1872.5999999999997,
+          "max": 1872.8,
+          "iqr": 4.7000000000000455
+        },
+        "peak_gpu_memory_mb": {
+          "n": 30,
+          "min": 2299.0,
+          "p50": 2315.0,
+          "p90": 2315.0,
+          "max": 2315.0,
+          "iqr": 0.0
+        },
+        "mean_gpu_power_w": {
+          "n": 30,
+          "min": 27.02,
+          "p50": 40.055,
+          "p90": 45.903000000000006,
+          "max": 48.51,
+          "iqr": 6.787500000000001
+        },
+        "gpu_energy_j": {
+          "n": 30,
+          "min": 19.3,
+          "p50": 38.795,
+          "p90": 66.942,
+          "max": 72.78,
+          "iqr": 33.8325
+        },
+        "gpu_offload_pct": {
+          "n": 30,
+          "min": 63.7,
+          "p50": 63.7,
+          "p90": 63.70000000000001,
+          "max": 63.7,
+          "iqr": 0.0
+        }
+      },
+      "remote_connections": 0
+    }
+  },
+  {
+    "run_id": "20261113T132921Z-1979a3",
+    "model": "phi4-mini",
+    "suite": "support_triage_v1",
+    "json_mode": "prompt",
+    "tasks": 30,
+    "quality": {
+      "overall": 0.85,
+      "classify": 0.7333333333333333,
+      "extract": 0.9666666666666667,
+      "summarize": null
+    },
+    "json": {
+      "strict_rate": 0.1,
+      "valid_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "first_attempt_valid_rate": 1.0,
+      "first_attempt_schema_valid_rate": 1.0,
+      "repair_rate": 0.0,
+      "repair_attempts": 0,
+      "first_attempt_quality": 0.85,
+      "final_quality": 0.85,
+      "repair_ms": 0.0
+    },
+    "speed": {
+      "runs": 30,
+      "successful_runs": 30,
+      "error_rate": 0.0,
+      "median_total_latency_ms": 1256.7465000001903,
+      "median_ttft_ms": 176.0748999995485,
+      "median_tokens_per_sec": 32.178299341953476,
+      "median_prefill_tokens_per_sec": 1070.058600909238,
+      "stats": {
+        "total_latency_ms": {
+          "n": 30,
+          "min": 666.769800000111,
+          "p50": 1256.7465000001903,
+          "p90": 1689.4388199996683,
+          "max": 1842.8992000008293,
+          "iqr": 802.8623499994865
+        },
+        "ttft_ms": {
+          "n": 30,
+          "min": 48.27830000067479,
+          "p50": 176.0748999995485,
+          "p90": 205.77152999958344,
+          "max": 283.4281999985251,
+          "iqr": 12.754700000641606
+        },
+        "tokens_per_sec": {
+          "n": 30,
+          "min": 22.97316515517826,
+          "p50": 32.178299341953476,
+          "p90": 34.07527890181833,
+          "max": 34.604299831427625,
+          "iqr": 1.9618420164270667
+        },
+        "prefill_tokens_per_sec": {
+          "n": 30,
+          "min": 461.31953023597663,
+          "p50": 1070.058600909238,
+          "p90": 1391.4836202873698,
+          "max": 6062.083041398848,
+          "iqr": 526.6302563258932
+        },
+        "peak_runtime_rss_mb": {
+          "n": 30,
+          "min": 1825.2,
+          "p50": 1859.7,
+          "p90": 1860.4000000000003,
+          "max": 1860.8,
+          "iqr": 1.400000000000091
+        },
+        "peak_gpu_memory_mb": {
+          "n": 30,
+          "min": 2299.0,
+          "p50": 2315.0,
+          "p90": 2315.0,
+          "max": 2315.0,
+          "iqr": 0.0
+        },
+        "mean_gpu_power_w": {
+          "n": 30,
+          "min": 30.74,
+          "p50": 36.75,
+          "p90": 41.838,
+          "max": 52.69,
+          "iqr": 4.689999999999998
+        },
+        "gpu_energy_j": {
+          "n": 30,
+          "min": 22.9,
+          "p50": 45.019999999999996,
+          "p90": 64.72599999999998,
+          "max": 68.5,
+          "iqr": 28.87
+        },
+        "gpu_offload_pct": {
+          "n": 30,
+          "min": 63.7,
+          "p50": 63.7,
+          "p90": 63.70000000000001,
+          "max": 63.7,
+          "iqr": 0.0
+        }
+      },
+      "remote_connections": 0
+    }
+  },
+  {
+    "run_id": "20261113T133009Z-86d45a",
+    "model": "llama3.2:3b",
+    "suite": "support_triage_v1",
+    "json_mode": "schema",
+    "tasks": 30,
+    "quality": {
+      "overall": 0.8583333333333333,
+      "classify": 0.7333333333333333,
+      "extract": 0.9833333333333333,
+      "summarize": null
+    },
+    "json": {
+      "strict_rate": 1.0,
+      "valid_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "first_attempt_valid_rate": 1.0,
+      "first_attempt_schema_valid_rate": 1.0,
+      "repair_rate": 0.0,
+      "repair_attempts": 0,
+      "first_attempt_quality": 0.8583333333333333,
+      "final_quality": 0.8583333333333333,
+      "repair_ms": 0.0
+    },
+    "speed": {
+      "runs": 30,
+      "successful_runs": 30,
+      "error_rate": 0.0,
+      "median_total_latency_ms": 677.3918999997477,
+      "median_ttft_ms": 98.87739999885525,
+      "median_tokens_per_sec": 51.0713851329752,
+      "median_prefill_tokens_per_sec": 2203.1918570216812,
+      "stats": {
+        "total_latency_ms": {
+          "n": 30,
+          "min": 242.7652999995189,
+          "p50": 677.3918999997477,
+          "p90": 984.0040199995201,
+          "max": 1327.740900000208,
+          "iqr": 455.20567499852405
+        },
+        "ttft_ms": {
+          "n": 30,
+          "min": 32.98030000041763,
+          "p50": 98.87739999885525,
+          "p90": 207.13104000060412,
+          "max": 210.54240000012214,
+          "iqr": 26.855025000259047
+        },
+        "tokens_per_sec": {
+          "n": 30,
+          "min": 21.818486971845758,
+          "p50": 51.0713851329752,
+          "p90": 59.27652533691745,
+          "max": 61.90034045187248,
+          "iqr": 12.064361941894873
+        },
+        "prefill_tokens_per_sec": {
+          "n": 30,
+          "min": 1182.673283742111,
+          "p50": 2203.1918570216812,
+          "p90": 3384.9380227184256,
+          "max": 11857.074186829033,
+          "iqr": 1093.7940311668408
+        },
+        "peak_runtime_rss_mb": {
+          "n": 30,
+          "min": 1114.3,
+          "p50": 1145.7,
+          "p90": 1146.9,
+          "max": 1147.4,
+          "iqr": 1.2749999999998636
+        },
+        "peak_gpu_memory_mb": {
+          "n": 30,
+          "min": 2319.0,
+          "p50": 2331.0,
+          "p90": 2331.0,
+          "max": 2331.0,
+          "iqr": 0.0
+        },
+        "mean_gpu_power_w": {
+          "n": 30,
+          "min": 32.95,
+          "p50": 40.515,
+          "p90": 45.49499999999999,
+          "max": 48.46,
+          "iqr": 5.074999999999996
+        },
+        "gpu_energy_j": {
+          "n": 30,
+          "min": 8.75,
+          "p50": 26.380000000000003,
+          "p90": 40.699999999999996,
+          "max": 53.8,
+          "iqr": 17.957500000000003
+        },
+        "gpu_offload_pct": {
+          "n": 30,
+          "min": 80.0,
+          "p50": 80.0,
+          "p90": 80.0,
+          "max": 80.0,
+          "iqr": 0.0
+        }
+      },
+      "remote_connections": 0
+    }
+  },
+  {
+    "run_id": "20261113T133038Z-541103",
+    "model": "llama3.2:3b",
+    "suite": "support_triage_v1",
+    "json_mode": "prompt",
+    "tasks": 30,
+    "quality": {
+      "overall": 0.8583333333333333,
+      "classify": 0.7333333333333333,
+      "extract": 0.9833333333333333,
+      "summarize": null
+    },
+    "json": {
+      "strict_rate": 1.0,
+      "valid_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "first_attempt_valid_rate": 1.0,
+      "first_attempt_schema_valid_rate": 1.0,
+      "repair_rate": 0.0,
+      "repair_attempts": 0,
+      "first_attempt_quality": 0.8583333333333333,
+      "final_quality": 0.8583333333333333,
+      "repair_ms": 0.0
+    },
+    "speed": {
+      "runs": 30,
+      "successful_runs": 30,
+      "error_rate": 0.0,
+      "median_total_latency_ms": 666.3483000002088,
+      "median_ttft_ms": 90.55579999949259,
+      "median_tokens_per_sec": 52.626160616321314,
+      "median_prefill_tokens_per_sec": 2280.6732804805247,
+      "stats": {
+        "total_latency_ms": {
+          "n": 30,
+          "min": 323.17759999932605,
+          "p50": 666.3483000002088,
+          "p90": 817.3343900001782,
+          "max": 957.4921000003087,
+          "iqr": 448.9697999993041
+        },
+        "ttft_ms": {
+          "n": 30,
+          "min": 82.23510000061651,
+          "p50": 90.55579999949259,
+          "p90": 124.95562999920367,
+          "max": 237.06719999972847,
+          "iqr": 7.511674999022944
+        },
+        "tokens_per_sec": {
+          "n": 30,
+          "min": 21.74022108132515,
+          "p50": 52.626160616321314,
+          "p90": 54.27892921574629,
+          "max": 55.252073043240564,
+          "iqr": 2.8213843177676807
+        },
+        "prefill_tokens_per_sec": {
+          "n": 30,
+          "min": 1117.7223197256587,
+          "p50": 2280.6732804805247,
+          "p90": 3521.4674865574502,
+          "max": 3702.0791297482237,
+          "iqr": 1379.8986150353521
+        },
+        "peak_runtime_rss_mb": {
+          "n": 30,
+          "min": 1113.4,
+          "p50": 1145.0,
+          "p90": 1146.1,
+          "max": 1146.4,
+          "iqr": 1.650000000000091
+        },
+        "peak_gpu_memory_mb": {
+          "n": 30,
+          "min": 2319.0,
+          "p50": 2331.0,
+          "p90": 2331.0,
+          "max": 2331.0,
+          "iqr": 0.0
+        },
+        "mean_gpu_power_w": {
+          "n": 30,
+          "min": 32.16,
+          "p50": 38.47,
+          "p90": 39.507999999999996,
+          "max": 48.4,
+          "iqr": 1.177500000000002
+        },
+        "gpu_energy_j": {
+          "n": 30,
+          "min": 10.39,
+          "p50": 25.54,
+          "p90": 31.677000000000003,
+          "max": 36.27,
+          "iqr": 16.875
+        },
+        "gpu_offload_pct": {
+          "n": 30,
+          "min": 80.0,
+          "p50": 80.0,
+          "p90": 80.0,
+          "max": 80.0,
+          "iqr": 0.0
+        }
+      },
+      "remote_connections": 0
+    }
+  },
+  {
+    "run_id": "20261113T133116Z-922ef1",
+    "model": "qwen3:4b",
+    "suite": "support_triage_v1",
+    "json_mode": "prompt",
+    "tasks": 30,
+    "quality": {
+      "overall": 0.0,
+      "classify": 0.0,
+      "extract": 0.0,
+      "summarize": null
+    },
+    "json": {
+      "strict_rate": 0.0,
+      "valid_rate": 0.0,
+      "schema_valid_rate": 0.0,
+      "first_attempt_valid_rate": 0.0,
+      "first_attempt_schema_valid_rate": 0.0,
+      "repair_rate": 1.0,
+      "repair_attempts": 60,
+      "first_attempt_quality": 0.0,
+      "final_quality": 0.0,
+      "repair_ms": 606489.6
+    },
+    "speed": {
+      "runs": 30,
+      "successful_runs": 30,
+      "error_rate": 0.0,
+      "median_total_latency_ms": 9799.638250000498,
+      "median_ttft_ms": 245.79995000021881,
+      "median_tokens_per_sec": 26.817435617169522,
+      "median_prefill_tokens_per_sec": 897.2342547127998,
+      "stats": {
+        "total_latency_ms": {
+          "n": 30,
+          "min": 9510.904699998719,
+          "p50": 9799.638250000498,
+          "p90": 10071.687210001073,
+          "max": 11312.699500000235,
+          "iqr": 266.88914999976987
+        },
+        "ttft_ms": {
+          "n": 30,
+          "min": 78.89259999865317,
+          "p50": 245.79995000021881,
+          "p90": 268.16238000010344,
+          "max": 289.34300000037183,
+          "iqr": 25.134350001280836
+        },
+        "tokens_per_sec": {
+          "n": 30,
+          "min": 23.19662757279822,
+          "p50": 26.817435617169522,
+          "p90": 27.359124200596444,
+          "max": 27.437403332722777,
+          "iqr": 0.6891901237412021
+        },
+        "prefill_tokens_per_sec": {
+          "n": 30,
+          "min": 571.944861199758,
+          "p50": 897.2342547127998,
+          "p90": 1265.8356246535932,
+          "max": 5478.385044787745,
+          "iqr": 607.7506586965328
+        },
+        "peak_runtime_rss_mb": {
+          "n": 30,
+          "min": 1749.0,
+          "p50": 4583.05,
+          "p90": 6568.0,
+          "max": 6850.7,
+          "iqr": 2841.0750000000007
+        },
+        "peak_gpu_memory_mb": {
+          "n": 30,
+          "min": 2317.0,
+          "p50": 2326.0,
+          "p90": 2326.0,
+          "max": 2326.0,
+          "iqr": 7.0
+        },
+        "mean_gpu_power_w": {
+          "n": 30,
+          "min": 28.58,
+          "p50": 32.495000000000005,
+          "p90": 33.499,
+          "max": 34.0,
+          "iqr": 1.1900000000000013
+        },
+        "gpu_energy_j": {
+          "n": 30,
+          "min": 304.27,
+          "p50": 318.115,
+          "p90": 325.65000000000003,
+          "max": 332.77,
+          "iqr": 8.9375
+        },
+        "gpu_offload_pct": {
+          "n": 30,
+          "min": 66.3,
+          "p50": 66.3,
+          "p90": 66.29999999999998,
+          "max": 66.3,
+          "iqr": 0.0
+        }
+      },
+      "remote_connections": 3
+    }
+  }
+]
