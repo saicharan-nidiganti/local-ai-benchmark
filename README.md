@@ -72,7 +72,8 @@ and summarized.
 - **Every model over-escalates priority** with the suite's prompt. Categories are right for 12
   to 14 of 15 tickets, priorities for only 8 to 10, and 17 of the 18 wrong priorities are one
   level too high. A [priority rubric](results/2026-11-13-priority-rubric/) with worked examples
-  fixes it for qwen3:4b-instruct (15 of 15) and phi4-mini (14 of 15); llama3.2:3b overcorrects.
+  fixes most of it: on [15 held-out tickets](results/2026-11-13-priority-rubric-holdout/),
+  labelled before any run, every model gets 13 of 15 priorities right, from 6 to 10.
 - **Structured output removes JSON failures**: all 90 JSON replies parse and match the schema.
 - **No model fits in 4 GB of VRAM**: Ollama keeps 64 to 80% on the GPU and runs the rest on the
   CPU.
@@ -81,6 +82,7 @@ and summarized.
 | --- | --- |
 | [Privacy, latency and cost, offline](results/2026-11-13-offline-privacy-latency-cost/) | With networking off: the same 135 replies and 0 connections to another machine; every model meets every latency target; cost per model against the same model hosted |
 | [The app, offline](results/2026-11-13-offline-app/) | `triage` and the web page answer three fictional tickets with networking off, about 3 s each; a foreign Host header is refused |
+| [The rubric on held-out tickets](results/2026-11-13-priority-rubric-holdout/) | On 15 new tickets labelled before any run, every model gets 13 of 15 priorities right with the rubric (from 10, 6 and 10); it pulls a stopped business from urgent to high and costs phi4-mini two categories |
 | [A priority rubric](results/2026-11-13-priority-rubric/) | Priority right for 15 and 14 of 15 tickets (from 9 and 8) for qwen3:4b-instruct and phi4-mini, at no measurable time cost; llama3.2:3b overcorrects to too low |
 | [JSON from the schema or the prompt, with repair](results/2026-11-13-json-mode-and-repair/) | The three models return valid JSON from the prompt alone, but phi4-mini fences it (22% slower); repair rescued none of the thinking build's 30 failures; schema mode stays the default |
 | [phi4-mini, Q4_K_M against Q8_0](results/2026-11-13-phi4-mini-q4-vs-q8/) | Q8_0 sits 44% on the GPU against 64%: 2.3 times slower and 1.8 times the GPU energy per task, for 0.022 more quality; Q4_K_M stays the pick |
@@ -157,9 +159,9 @@ uv run local-ai-benchmark triage ticket.txt --json
 - **Keeps nothing:** no log of tickets or answers, no file. The page listens on 127.0.0.1
   only, answers only requests addressed to `localhost`, refuses other origins, and loads
   nothing from elsewhere.
-- **Knows its limits:** with the rubric, phi4-mini rated 14 of the suite's 15 priorities right,
-  up from 8. The rubric's rules were drawn from those same tickets, so read the priority as a
-  suggestion.
+- **Knows its limits:** with the rubric, phi4-mini rated 13 of 15 priorities right on new
+  tickets, up from 6, but it can rate a stopped business high instead of urgent; read the
+  priority as a suggestion.
 
 ## Why the numbers can be trusted
 
