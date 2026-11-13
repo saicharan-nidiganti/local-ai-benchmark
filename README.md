@@ -69,8 +69,10 @@ and summarized.
 - **llama3.2:3b is 1.75 times faster** than qwen3:4b-instruct at half the energy, and more of it
   fits on the GPU. It scores as well on classification and extraction; summaries drag it down
   (0.71).
-- **Every model over-escalates priority.** Categories are right for 12 to 14 of 15 tickets,
-  priorities for only 8 to 10, and 17 of the 18 wrong priorities are one level too high.
+- **Every model over-escalates priority** with the suite's prompt. Categories are right for 12
+  to 14 of 15 tickets, priorities for only 8 to 10, and 17 of the 18 wrong priorities are one
+  level too high. A [priority rubric](results/2026-11-13-priority-rubric/) with worked examples
+  fixes it for qwen3:4b-instruct (15 of 15) and phi4-mini (14 of 15); llama3.2:3b overcorrects.
 - **Structured output removes JSON failures**: all 90 JSON replies parse and match the schema.
 - **No model fits in 4 GB of VRAM**: Ollama keeps 64 to 80% on the GPU and runs the rest on the
   CPU.
@@ -79,6 +81,7 @@ and summarized.
 | --- | --- |
 | [Privacy, latency and cost, offline](results/2026-11-13-offline-privacy-latency-cost/) | With networking off: the same 135 replies and 0 connections to another machine; every model meets every latency target; cost per model against the same model hosted |
 | [The app, offline](results/2026-11-13-offline-app/) | `triage` and the web page answer three fictional tickets with networking off, about 3 s each; a foreign Host header is refused |
+| [A priority rubric](results/2026-11-13-priority-rubric/) | Priority right for 15 and 14 of 15 tickets (from 9 and 8) for qwen3:4b-instruct and phi4-mini, at no measurable time cost; llama3.2:3b overcorrects to too low |
 | [JSON from the schema or the prompt, with repair](results/2026-11-13-json-mode-and-repair/) | The three models return valid JSON from the prompt alone, but phi4-mini fences it (22% slower); repair rescued none of the thinking build's 30 failures; schema mode stays the default |
 | [phi4-mini, Q4_K_M against Q8_0](results/2026-11-13-phi4-mini-q4-vs-q8/) | Q8_0 sits 44% on the GPU against 64%: 2.3 times slower and 1.8 times the GPU energy per task, for 0.022 more quality; Q4_K_M stays the pick |
 | [Three-model comparison](results/2026-11-13-three-model-comparison/) | Findings, chart, quality per task and ticket category, speed, resources, run identities, limits, how to reproduce |

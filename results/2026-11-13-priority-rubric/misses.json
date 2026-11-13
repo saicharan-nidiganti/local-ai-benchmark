@@ -1,0 +1,36 @@
+{
+  "qwen3:4b-instruct default": [
+    "T01 low->medium",
+    "T02 medium->high",
+    "T03 low->medium",
+    "T06 low->medium",
+    "T09 low->medium",
+    "T15 low->medium"
+  ],
+  "qwen3:4b-instruct rubric": [],
+  "phi4-mini default": [
+    "T01 low->medium",
+    "T02 medium->high",
+    "T03 low->medium",
+    "T09 low->medium",
+    "T12 medium->high",
+    "T14 medium->high",
+    "T15 low->medium"
+  ],
+  "phi4-mini rubric": [
+    "T02 medium->high"
+  ],
+  "llama3.2:3b default": [
+    "T01 low->medium",
+    "T04 high->urgent",
+    "T08 high->urgent",
+    "T09 low->medium",
+    "T11 high->medium"
+  ],
+  "llama3.2:3b rubric": [
+    "T05 high->medium",
+    "T08 high->medium",
+    "T11 high->medium",
+    "T14 medium->low"
+  ]
+}

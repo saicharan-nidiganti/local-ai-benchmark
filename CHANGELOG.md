@@ -12,6 +12,11 @@ All notable changes to this project are recorded here. The format follows
   and five worked examples written for it (a test checks they share no phrase with the
   suite); every suite record and summary names its variant, and `default` stays the suite's
   own prompts ([#74](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/74)).
+- Results: the priority rubric against the default prompt on the 15 classify tasks.
+  qwen3:4b-instruct gets 15 of 15 priorities right (from 9), phi4-mini 14 (from 8), with the
+  category unchanged and no measurable time cost; llama3.2:3b trades 4 over-escalations for 4
+  under-escalations. The rules were drawn from these tickets' errors, which the results state
+  ([#74](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/74)).
 
 ## [1.1.0] - 2026-11-13
 
