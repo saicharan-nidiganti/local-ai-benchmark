@@ -35,7 +35,7 @@ and extraction, but its summaries miss facts.
 order number, customer, product, issue and a summary in about 3 s, with nothing leaving the
 machine ([The app](#the-app)).
 
-> **Status: all six phases complete.** Measurement harness, task suite, three-model
+> **Status: all six phases complete, release v1.0.0.** Measurement harness, task suite, three-model
 > comparison, privacy, latency and cost measured with networking off, and the offline
 > triage app. See [Project status](#project-status).
 
