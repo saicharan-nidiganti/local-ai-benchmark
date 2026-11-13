@@ -39,7 +39,10 @@ def generate(
     model: str,
     prompt: str,
     settings: GenerationSettings | None = None,
+    output_format: dict[str, Any] | None = None,
 ) -> InferenceResult:
+    """One streamed request. `output_format` is a JSON schema the runtime constrains the
+    reply to (Ollama's structured outputs); None leaves the reply free."""
     settings = settings or GenerationSettings()
     start = time.perf_counter()
     first_token_at: float | None = None
@@ -56,6 +59,7 @@ def generate(
             think=settings.think,
             keep_alive=settings.keep_alive,
             options=settings.options(),
+            format=output_format,
         )
 
         for chunk in stream:

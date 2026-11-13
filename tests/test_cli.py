@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import httpx
 import pytest
@@ -344,7 +345,7 @@ def test_summarize_without_a_log_or_with_an_unknown_id_exits_2(tmp_path, capsys)
     with pytest.raises(SystemExit) as unknown:
         cli.main(["summarize", "--run-id", "r9", "--output", str(log)])
     assert unknown.value.code == 2
-    assert "no benchmark run with ID r9" in capsys.readouterr().err
+    assert "no benchmark or suite run with ID r9" in capsys.readouterr().err
 
 
 def test_each_run_id_gets_one_manifest_beside_the_run_log(monkeypatch, tmp_path):
@@ -425,3 +426,130 @@ def test_ask_records_get_their_own_run_id(monkeypatch, tmp_path):
 
     first, second = read_jsonl(output)
     assert first["run_id"] != second["run_id"]
+
+
+def two_ticket_suite(tmp_path):
+    source = Path(__file__).resolve().parents[1] / "benchmarks" / "support_triage_v1.jsonl"
+    lines = source.read_text(encoding="utf-8").splitlines()
+    target = tmp_path / "mini_suite_v1.jsonl"
+    target.write_text("\n".join([lines[0], lines[3]]) + "\n", encoding="utf-8")  # T01, T04
+    return target
+
+
+def answering_stub(model, prompt, **_settings):
+    """Answers like a model that gets T04 right and T01 half right."""
+    lamp = "A-1042" in prompt
+    if prompt.startswith("You triage"):
+        reply = (
+            '{"category": "refund", "priority": "high"}'
+            if lamp
+            else '{"category": "billing", "priority": "high"}'
+        )
+    elif prompt.startswith("Extract"):
+        reply = (
+            '{"order_id": "A-1042", "customer_name": "Priya Raman", "product": "lamp", '
+            '"issue": "cracked lamp"}'
+            if lamp
+            else '```json\n{"order_id": "ORD-20931", "customer_name": "Arjun Mehta", '
+            '"product": "monitor", "issue": "needs GST invoice"}\n```'
+        )
+    else:
+        reply = (
+            "Order A-1042: the lamp arrived cracked; the customer wants a refund."
+            if lamp
+            else "Customer asks for an invoice."
+        )
+    result = stub_result(model, prompt)
+    return InferenceResult(**{**result.to_dict(), "response": reply})
+
+
+def test_the_suite_scores_every_task_and_summarize_reproduces_it(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(cli, "generate", answering_stub)
+    output = tmp_path / "runs.jsonl"
+    suite = two_ticket_suite(tmp_path)
+
+    cli.main(["suite", "--model", "m", "--suite", str(suite), "--warmup-runs", "1",
+              "--output", str(output)])  # fmt: skip
+    printed = printed_summary(capsys.readouterr().out)
+
+    records = read_jsonl(output)
+    assert [r["task_id"] for r in records] == [
+        "T01:classify", "T01:extract", "T01:summarize",
+        "T04:classify", "T04:extract", "T04:summarize",
+    ]  # fmt: skip
+    assert all(r["run_type"] == "suite" and r["suite"] == "mini_suite_v1" for r in records)
+    assert [r["score"] for r in records] == [
+        0.5,
+        1.0,
+        pytest.approx(1 / 3, abs=1e-4),
+        1.0,
+        1.0,
+        1.0,
+    ]
+    assert printed["tasks"] == 6
+    assert printed["quality"]["classify"] == 0.75
+    assert printed["quality"]["extract"] == 1.0
+    assert printed["json"] == {"strict_rate": 0.75, "valid_rate": 1.0, "schema_valid_rate": 1.0}
+    assert printed["speed"]["error_rate"] == 0.0
+
+    cli.main(["summarize", "--output", str(output)])
+    assert json.loads(capsys.readouterr().out) == printed
+
+
+def test_the_suite_can_run_one_task_kind(monkeypatch, tmp_path):
+    monkeypatch.setattr(cli, "generate", answering_stub)
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["suite", "--model", "m", "--suite", str(two_ticket_suite(tmp_path)),
+              "--tasks", "classify", "--warmup-runs", "0", "--output", str(output)])  # fmt: skip
+
+    assert [r["task"] for r in read_jsonl(output)] == ["classify", "classify"]
+
+
+def test_a_failed_task_scores_zero(monkeypatch, tmp_path):
+    def failing(model, prompt, **_settings):
+        result = answering_stub(model, prompt)
+        return InferenceResult(**{**result.to_dict(), "error": "RuntimeError: stream broke"})
+
+    monkeypatch.setattr(cli, "generate", failing)
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["suite", "--model", "m", "--suite", str(two_ticket_suite(tmp_path)),
+              "--warmup-runs", "0", "--output", str(output)])  # fmt: skip
+
+    assert all(r["score"] == 0.0 for r in read_jsonl(output))
+
+
+def test_an_unknown_task_kind_or_a_missing_suite_exits_2(tmp_path, capsys):
+    with pytest.raises(SystemExit) as unknown:
+        cli.main(["suite", "--model", "m", "--suite", str(two_ticket_suite(tmp_path)),
+                  "--tasks", "translate"])  # fmt: skip
+    assert unknown.value.code == 2
+    assert "unknown task kind(s): translate" in capsys.readouterr().err
+
+    with pytest.raises(SystemExit) as missing:
+        cli.main(["suite", "--model", "m", "--suite", str(tmp_path / "none.jsonl")])
+    assert missing.value.code == 2
+
+
+def test_json_tasks_send_their_schema_unless_prompt_mode_is_chosen(monkeypatch, tmp_path):
+    seen = []
+
+    def recording(model, prompt, **settings):
+        seen.append(settings.get("output_format"))
+        return answering_stub(model, prompt)
+
+    monkeypatch.setattr(cli, "generate", recording)
+    output = tmp_path / "runs.jsonl"
+    base = ["suite", "--model", "m", "--suite", str(two_ticket_suite(tmp_path)),
+            "--warmup-runs", "0", "--output", str(output)]  # fmt: skip
+
+    cli.main(base)
+    assert seen[0]["properties"].keys() == {"category", "priority"}
+    assert seen[1]["properties"].keys() == {"order_id", "customer_name", "product", "issue"}
+    assert seen[2] is None  # summaries stay free text
+    assert [r["json_mode"] for r in read_jsonl(output)[:3]] == ["schema", "schema", None]
+
+    seen.clear()
+    cli.main([*base, "--json-mode", "prompt"])
+    assert seen == [None] * 6

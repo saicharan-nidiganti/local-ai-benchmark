@@ -60,7 +60,7 @@ flowchart TB
         runtimeq["runtime.py<br/>server version, model details,<br/>GPU placement"]
         manifest["manifest.py<br/>environment manifest,<br/>once per run ID"]
         sampler["sampler.py<br/>RAM, VRAM and GPU power<br/>during each run"]
-        suite["suite.py, scorers.py<br/>tasks and scoring<br/>Phase 2 · #19-#21"]:::planned
+        suite["suite.py, scorers.py<br/>tasks and scoring"]
         report["report.py<br/>comparison report<br/>Phase 3 · #25"]:::planned
         app["app.py<br/>offline application<br/>Phase 5 · #31"]:::planned
     end
@@ -74,11 +74,10 @@ flowchart TB
     cli --> preflight
     preflight --> runtimeq
     runtimeq --> ollama
-    cli -.-> suite
+    cli --> suite
     cli -.-> report
     cli --> sampler
     cli --> manifest
-    suite -.-> inference
     report -.-> log
     app -.-> inference
     classDef planned stroke-dasharray: 5 3
@@ -89,7 +88,7 @@ Solid boxes and arrows exist today; dashed ones are planned.
 | Module | Responsibility | Public interface | Depends on |
 | --- | --- | --- | --- |
 | `cli.py` | Parse arguments; resolve settings; run the preflight; run `ask` (one request) and `benchmark` (warm-ups, then measured runs); print results; map failures to exit codes | `main(argv)`, `build_parser()`, `ask(args)`, `benchmark(args)` | `config`, `preflight`, `inference`, `metrics`, `paths` |
-| `inference.py` | Stream one generation from Ollama, time the first token on the client, read the runtime's durations, and turn any failure into a recorded error | `generate(model, prompt, settings) -> InferenceResult` | `ollama` client, `config` |
+| `inference.py` | Stream one generation from Ollama, time the first token on the client, read the runtime's durations, and turn any failure into a recorded error | `generate(model, prompt, settings, output_format) -> InferenceResult`; `output_format` is a JSON schema the runtime constrains the reply to | `ollama` client, `config` |
 | `config.py` | Load `benchmark.yaml` and `models.yaml`, validate every key and type, apply command-line overrides, resolve a model id to its Ollama tag | `load_settings(path)`, `with_overrides(settings, **flags)`, `load_models(path)`, `resolve_model(name, models)`, `GenerationSettings.options()` | PyYAML |
 | `metrics.py` | Append records to the run log and read them back; issue run IDs; group records by run; summarize a run with medians and order statistics | `append_jsonl`, `read_jsonl`, `new_run_id`, `benchmark_runs`, `select_run`, `summarize`, `run_summary`, `spread` | standard library |
 | `runtime.py` | Ask the Ollama server for its version, a model's details and digest, and where a loaded model sits (GPU or CPU); read `OLLAMA_HOST` as the Ollama client does | `host()`, `server_version()`, `model_details(name)`, `loaded_model(name)` | `ollama` client, `httpx` |
@@ -137,6 +136,10 @@ sequenceDiagram
     end
     CLI-->>Op: run ID and summary: error rate, p50, p90, min, max, IQR per metric
 ```
+
+`suite` runs every task of a suite in the same way (warm-up on the first task, then each task
+once, or `--repeats` times), scores each reply, and records it with `run_type: "suite"`. Its
+summary adds quality per task kind and the JSON rates beside the speed summary.
 
 `ask` is the same request once, recorded with `run_type: "single"` and its own run ID,
 without warm-up or summary. `summarize --run-id ID` reads the log and prints exactly the
@@ -207,8 +210,20 @@ The environment of a run is not repeated on each record: it is the line with the
 the sections `harness`, `python`, `os`, `cpu`, `memory_total_gb`, `gpus`, `power`, `runtime`
 and `model`.
 
-**Planned fields**, added without removing any of the above: `prompt_id`,
-`category` and `score` (Phase 2, [#21](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/21)).
+Suite records (`run_type: "suite"`) add:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `suite` | string | Suite name and version, for example `support_triage_v1` |
+| `task_id` | string | `<ticket>:<task>`, for example `T04:extract` |
+| `ticket_id` | string | The ticket the task comes from |
+| `task` | string | `classify`, `extract` or `summarize` |
+| `json_mode` | string or null | `schema` (the runtime enforces the task's JSON schema) or `prompt`; null for summaries ([ADR-0009](decisions/0009-structured-output-for-json-tasks.md)) |
+| `score` | number | 0 to 1; 0 for a failed run |
+| `json_strict` | boolean or null | The whole reply is one JSON object; null for summaries |
+| `json_valid` | boolean or null | A JSON object could be recovered from the reply |
+| `schema_valid` | boolean or null | The object has the required keys and allowed labels |
+| `score_details` | object | Per-check results: labels, fields, facts found, word count |
 
 ## 6. Deployment view
 
@@ -299,3 +314,4 @@ recorded on every run ([ADR-0006](decisions/0006-configuration-and-pinned-settin
 | [0006](decisions/0006-configuration-and-pinned-settings.md) | Configuration precedence and pinned generation settings |
 | [0007](decisions/0007-run-identity-and-manifests.md) | Run identity and environment manifests |
 | [0008](decisions/0008-use-case-support-ticket-triage.md) | Use case: support-ticket triage |
+| [0009](decisions/0009-structured-output-for-json-tasks.md) | Structured output for the JSON tasks |
