@@ -8,6 +8,7 @@
 | [environment.md](environment.md) | The reference machine, software versions and model digests |
 | [roadmap.md](roadmap.md) | The phases, their gates and the matching milestones |
 | [decisions/](decisions/) | Why: one architecture decision record per consequential choice |
+| [../results/](../results/) | What was found: every published experiment, with its data and how to reproduce it |
 
 For contributing (setup, commands, workflow, definition of done), see
 [CONTRIBUTING.md](../CONTRIBUTING.md). For the privacy model and how to report a vulnerability,
