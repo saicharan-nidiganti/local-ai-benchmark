@@ -233,6 +233,40 @@ def print_network(summary: dict[str, Any]) -> None:
     print(f"Network: {found} to another machine during the measured runs")
 
 
+def repaired(
+    task: Any,
+    measured: dict[str, Any],
+    scored: scorers.Score,
+    schema: dict[str, Any] | None,
+    model: ModelEntry,
+    settings: BenchmarkSettings,
+    args: argparse.Namespace,
+) -> dict[str, Any]:
+    """Bounded repair (--repair N): re-ask a JSON task whose reply fails its schema, at most N
+    times. Timings and resources stay those of the first attempt; the repairs' time is kept
+    apart, and the score is the final reply's. Empty when repair is off or does not apply."""
+    if not args.repair or task.kind not in scorers.JSON_SCHEMAS:
+        return {}
+    first, reply, attempts, repair_ms = scored, str(measured["response"]), 0, 0.0
+    while not scored.schema_valid and attempts < args.repair and not measured["error"]:
+        attempts += 1
+        retry = measured_run(
+            model, scorers.repair_prompt(task.prompt, reply, scored), settings, args, schema
+        )
+        repair_ms += float(retry["total_latency_ms"])
+        reply = "" if retry["error"] else str(retry["response"])
+        scored = scorers.score(task, reply)
+    return {
+        "final": scored,
+        "repair_attempts": attempts,
+        "repair_ms": round(repair_ms, 1),
+        "first_score": round(first.score, 4),
+        "first_json_valid": first.json_valid,
+        "first_schema_valid": first.schema_valid,
+        "repaired_response": reply if attempts else None,
+    }
+
+
 def suite_command(args: argparse.Namespace) -> None:
     settings, model = resolve(args)
     suite = load_suite(args.suite or default_suite_path())
@@ -259,7 +293,15 @@ def suite_command(args: argparse.Namespace) -> None:
             schema = scorers.JSON_SCHEMAS.get(task.kind) if args.json_mode == "schema" else None
             measured = measured_run(model, task.prompt, settings, args, output_format=schema)
             scored = scorers.score(task, measured["response"] if not measured["error"] else "")
-            print(f"[{n}/{len(tasks)}] {task.id}: score {scored.score:.2f}")
+            repairs = repaired(task, measured, scored, schema, model, settings, args)
+            if repairs:
+                scored = repairs.pop("final")
+            note = (
+                f" after {repairs['repair_attempts']} repair(s)"
+                if repairs.get("repair_attempts")
+                else ""
+            )
+            print(f"[{n}/{len(tasks)}] {task.id}: score {scored.score:.2f}{note}")
             record = {
                 "timestamp": utc_timestamp(),
                 "run_id": run_id,
@@ -273,6 +315,7 @@ def suite_command(args: argparse.Namespace) -> None:
                 **run_fields(settings, model),
                 **measured,
                 **scored.record(),
+                **repairs,
             }
             append_jsonl(output, record)
             records.append(record)
@@ -498,6 +541,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_suite.add_argument(
         "--warmup-runs", type=int, help="unrecorded runs of the first task first (default: 1)"
+    )
+    p_suite.add_argument(
+        "--repair",
+        type=int,
+        choices=range(scorers.MAX_REPAIRS + 1),
+        default=0,
+        metavar=f"{{0..{scorers.MAX_REPAIRS}}}",
+        help="re-ask a JSON task whose reply fails its schema, at most this many times "
+        "(default: 0, no repair)",
     )
     p_suite.set_defaults(func=suite_command)
 

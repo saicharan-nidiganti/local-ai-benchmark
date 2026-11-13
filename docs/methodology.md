@@ -63,6 +63,14 @@ recovered object, so a model is not punished twice for formatting; the strict ra
 reported beside it. **Schema-valid** means the object has the required keys and labels from
 the allowed sets.
 
+**Bounded repair** (`suite --repair N`, N at most 2) re-asks a JSON task whose reply is not
+schema-valid: the same task again, with the rejected reply and what was wrong with it, since
+the runtime keeps no conversation. The final reply is scored; the first attempt's score and
+validity are kept beside it (`first_score`, `first_json_valid`, `first_schema_valid`), with
+the number of repairs and their time (`repair_attempts`, `repair_ms`). Timings and resources
+stay those of the first attempt, so repair never hides in the speed figures. Summaries add
+the first-attempt validity, the repair rate, the quality before and after, and the time spent.
+
 ### Comparing models
 
 `report` compares one suite run per model, all on the same suite, settings and machine. Its

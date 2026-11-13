@@ -182,3 +182,19 @@ def test_score_dispatches_by_task_kind_and_records_cleanly():
     assert record["json_strict"] is True
     assert record["score_details"]["category"] == "refund"
     assert scorers.score(Task(LAMP, "summarize"), "").record()["json_valid"] is None
+
+
+def test_a_repair_prompt_repeats_the_task_with_the_rejected_reply_and_why():
+    rejected = scorers.Score(0.0, json_strict=False, json_valid=False, schema_valid=False)
+    off_schema = scorers.Score(0.0, json_strict=True, json_valid=True, schema_valid=False)
+
+    no_json = scorers.repair_prompt("Classify this.", "It is a refund.", rejected)
+    wrong_keys = scorers.repair_prompt("Classify this.", '{"kind": "refund"}', off_schema)
+
+    assert no_json.startswith("Classify this.")
+    assert "it held no JSON object" in no_json
+    assert "It is a refund." in no_json
+    assert no_json.endswith("Reply again with only the JSON object.")
+    assert "did not match the format asked for" in wrong_keys
+    assert "(empty)" in scorers.repair_prompt("Classify this.", "   ", rejected)
+    assert len(scorers.repair_prompt("p", "x" * 5000, rejected)) < 800  # the reply is cut short
