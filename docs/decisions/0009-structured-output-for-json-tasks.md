@@ -61,6 +61,15 @@ states its `json_mode`.
   longer flags a confused model, so field accuracy carries that signal alone.
 - Results in the two modes are not comparable; the summary names the mode.
 
+## Outcome of the comparison (#22, 2026-11-13)
+
+With the JSON asked for in the prompt alone, the three compared models still returned
+schema-valid JSON on every task, at the same quality; phi4-mini wrapped 27 of 30 replies in a
+code fence, 22% slower per task. The qwen3:4b thinking build failed every task, and two
+bounded repairs per task rescued none. The decision stands: schema mode by default, with
+repair (`--repair`) available and off
+([results](../../results/2026-11-13-json-mode-and-repair/)).
+
 ## Revisit when
 
 - A model or runtime without structured outputs joins the comparison.

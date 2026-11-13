@@ -18,6 +18,12 @@ All notable changes to this project are recorded here. The format follows
   the first attempt's score and validity, and summaries report first-attempt validity, the
   repair rate and quality before and after
   ([#22](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/22)).
+- Results: JSON from the schema against the prompt alone, with bounded repair. The three
+  compared models return schema-valid JSON either way at the same quality, but phi4-mini fences
+  27 of 30 replies without the schema and is 22% slower per task; the qwen3:4b thinking build
+  fails all 30 tasks and 60 repairs rescue none. Schema mode stays the default; ADR-0009
+  records the outcome
+  ([#22](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/22)).
 
 ## [1.0.0] - 2026-11-13
 
