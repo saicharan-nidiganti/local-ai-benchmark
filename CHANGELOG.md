@@ -14,6 +14,11 @@ All notable changes to this project are recorded here. The format follows
   http://127.0.0.1:8765, on the standard library alone, loopback only, with Host and Origin
   checks, a body cap and a Content-Security-Policy. Neither keeps tickets or answers.
   ADR-0012 ([#31](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/31)).
+- Results: the app with networking off. Three fictional tickets answered by `triage` and by
+  the web page in 2.7 to 3.6 s each with the model loaded; a foreign Host header refused;
+  screenshots of the page in `docs/images/`. `serve` flushes its start-up lines, so they
+  appear when its output goes to a file
+  ([#31](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/31)).
 - Privacy enforced and audited: the preflight refuses an Ollama server on another machine
   unless `--allow-remote` is given; every measured run records connections from Ollama, its
   runner or the harness to another machine (`remote_connections`, `remote_endpoints`), and

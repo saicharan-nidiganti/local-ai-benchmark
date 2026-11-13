@@ -26,6 +26,7 @@ only when their prompts contain nothing personal or confidential.
 
 | Experiment | Model | Finding |
 | --- | --- | --- |
+| [2026-11-13 the triage app, offline](2026-11-13-offline-app/) | phi4-mini | With networking off, the command and the web page answer every ticket in about 3 s with the model loaded; a foreign Host header is refused |
 | [2026-11-13 privacy, latency and cost, offline](2026-11-13-offline-privacy-latency-cost/) | qwen3:4b-instruct, phi4-mini, llama3.2:3b | With networking off, the same 135 replies and 0 connections to another machine; every model meets every latency target; GPU electricity costs 5 to 16 times less than the hosted price per token, but buying the laptop for this alone costs 2 to 6 times more |
 | [2026-11-13 three-model comparison](2026-11-13-three-model-comparison/) | qwen3:4b-instruct, phi4-mini, llama3.2:3b | phi4-mini is the best tradeoff: the quality of qwen3:4b-instruct (0.89) at 14% more speed; llama3.2:3b is 1.75 times faster but weaker at summaries (0.81 overall) |
 | [2026-11-13 baseline](2026-11-13-qwen3-4b-baseline/) | qwen3:4b | 30.8 tokens/s, 47 ms first token, 66% of the model on the 4 GB GPU, 320 J per 256-token answer |

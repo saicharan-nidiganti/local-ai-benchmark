@@ -1,0 +1,32 @@
+{
+  "model": "phi4-mini",
+  "category": "technical",
+  "priority": "high",
+  "order_id": "ORD-48213",
+  "customer_name": "Priya Raman",
+  "product": "Nimbus 2 wireless earbuds",
+  "issue": "left earbud does not charge",
+  "summary": "Order #ORD-48213: Nimbus 2 wireless earbuds left earbud won't charge. Customer requests replacement before Friday for birthday gift. Priya Raman (priya.raman@example.com).",
+  "steps": [
+    {
+      "task": "classify",
+      "total_ms": 679.6868000001268,
+      "ttft_ms": 107.30540000076871,
+      "error": null
+    },
+    {
+      "task": "extract",
+      "total_ms": 1681.4025999992737,
+      "ttft_ms": 129.15919999977632,
+      "error": null
+    },
+    {
+      "task": "summarize",
+      "total_ms": 1260.8531000005314,
+      "ttft_ms": 62.59169999975711,
+      "error": null
+    }
+  ],
+  "total_ms": 3621.9,
+  "errors": []
+}

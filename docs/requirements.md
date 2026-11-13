@@ -39,7 +39,7 @@ requirement counts as *Met* only when its verification exists and passes.
 | FR-9 | Keep prompts and replies on the machine; refuse a non-local runtime unless explicitly allowed | Offline test of the refusal; suite run with networking off | Phase 4 | [#27](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/27) | Met: [networking-off run](../results/2026-11-13-offline-privacy-latency-cost/) |
 | FR-10 | Set latency targets for interactive use and evaluate each model cold and warm | Each model marked as meeting or missing each target | Phase 4 | [#28](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/28) | Met: [every model meets every target](../results/2026-11-13-offline-privacy-latency-cost/) |
 | FR-11 | Estimate cost per million output tokens from measured power draw and hardware amortization, against a dated hosted-API price | Stated assumptions and per-model figures | Phase 4 | [#29](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/29) | Met: [cost per model](../results/2026-11-13-offline-privacy-latency-cost/) |
-| FR-12 | Provide an offline application for the chosen use case on the recommended model | The app works with networking off | Phase 5 | [#31](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/31) | Partial: `triage` and `serve` built (ADR-0012); the networking-off check follows on `main` |
+| FR-12 | Provide an offline application for the chosen use case on the recommended model | The app works with networking off | Phase 5 | [#31](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/31) | Met: [the app with networking off](../results/2026-11-13-offline-app/) |
 
 ## Non-functional requirements
 
