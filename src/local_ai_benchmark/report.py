@@ -11,6 +11,7 @@ from pathlib import Path
 from statistics import fmean, median
 from typing import Any
 
+from .cost import Cost, CostAssumptions
 from .metrics import Record, suite_summary
 from .suite import CATEGORIES, TASK_KINDS, Suite
 from .targets import TARGETS
@@ -32,6 +33,7 @@ class ModelResult:
     by_category: dict[str, float]
     latency_by_task: dict[str, float]
     cold: Record | None = None  # summary of the model's latest cold benchmark, if any
+    cost: Cost | None = None  # what the run's workload cost, when assumptions are given
 
     def target_value(self, key: str) -> float | None:
         """The measured value a latency target is judged on: warm figures from the suite run,
@@ -90,6 +92,10 @@ def model_result(
 
 def with_cold_start(result: ModelResult, cold: Record | None) -> ModelResult:
     return result if cold is None else replace(result, cold=cold)
+
+
+def with_cost(result: ModelResult, cost: Cost | None) -> ModelResult:
+    return result if cost is None else replace(result, cost=cost)
 
 
 @dataclass(frozen=True)
@@ -286,7 +292,93 @@ def privacy_section(results: list[ModelResult]) -> list[str]:
     return lines
 
 
-def render_markdown(results: list[ModelResult], title: str, chart_name: str) -> str:
+def _money(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:,.2f}"
+
+
+def cost_section(results: list[ModelResult], assumptions: CostAssumptions | None) -> list[str]:
+    """Local cost against the hosted price of the same model; shown with `--cost`."""
+    if assumptions is None:
+        return []
+    c = assumptions.currency
+    lines = [
+        "",
+        "## Cost",
+        "",
+        f"In {c}. Local cost is the electricity the GPU drew plus the laptop's price per hour "
+        "of use; hosted cost is the same model's API price. Every task of the run counts, the "
+        "prompt included.",
+        "",
+        "Per million output tokens:",
+        "",
+        "| Model | Local electricity | Local hardware | Local total | Hosted output price "
+        "| Hosted provider |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for r in results:
+        k = r.cost
+        if k is None:
+            lines.append(f"| {r.model} | n/a | n/a | n/a | n/a | n/a |")
+            continue
+        lines.append(
+            f"| {r.model} | {_money(k.electricity_per_million)} | "
+            f"{_money(k.hardware_per_million)} | {_money(k.local_per_million)} | "
+            f"{_money(k.hosted_per_million_output)} | "
+            f"{k.hosted.provider if k.hosted else 'n/a'} |"
+        )
+    lines += [
+        "",
+        "Per 1,000 tasks:",
+        "",
+        "| Model | Local, electricity only | Local, with hardware | Hosted, input and output |",
+        "| --- | --- | --- | --- |",
+    ]
+    for r in results:
+        k = r.cost
+        lines.append(
+            f"| {r.model} | "
+            + (
+                "n/a | n/a | n/a |"
+                if k is None
+                else f"{_money(k.electricity_per_1000_tasks)} | "
+                f"{_money(k.local_per_1000_tasks)} | {_money(k.hosted_per_1000_tasks)} |"
+            )
+        )
+    e, h, x = assumptions.electricity, assumptions.hardware, assumptions.exchange
+    lines += [
+        "",
+        "Assumptions:",
+        "",
+        f"- **Electricity:** {c} {e.price_per_kwh:,.2f} per kWh. {e.note} "
+        f"[Source]({e.source}), read {e.as_of.isoformat()}.",
+        f"- **Hardware:** {c} {h.price:,.0f} over {h.lifetime_years:g} years of "
+        f"{h.hours_per_day:g} hours a day, {c} {h.per_hour:,.2f} per hour. {h.note} "
+        f"[Source]({h.source}), read {h.as_of.isoformat()}.",
+        f"- **Exchange rate:** {c} {x.usd_to_local:,.2f} per USD. {x.note} [Source]({x.source}).",
+    ]
+    for r in results:
+        hosted = assumptions.hosted.get(r.model)
+        if hosted is not None:
+            lines.append(
+                f"- **{r.model} hosted:** {hosted.provider}, USD "
+                f"{hosted.input_per_million_usd:g} in and {hosted.output_per_million_usd:g} out "
+                f"per million tokens. {hosted.note} [Source]({hosted.source}), read "
+                f"{hosted.as_of.isoformat()}."
+            )
+    lines += [
+        "- **Limits:** the energy is the GPU board's alone; the CPU, memory and screen draw "
+        "more. Hardware cost assumes the laptop did nothing else; if it is already owned for "
+        "other work, the electricity column is the extra cost of running the model.",
+    ]
+    return lines
+
+
+def render_markdown(
+    results: list[ModelResult],
+    title: str,
+    chart_name: str,
+    assumptions: CostAssumptions | None = None,
+) -> str:
     v = verdict(results)
     first = results[0].summary
     lines = [
@@ -355,6 +447,7 @@ def render_markdown(results: list[ModelResult], title: str, chart_name: str) -> 
         cells = " | ".join(_fmt(r.latency_by_task.get(k), 0) for k in TASK_KINDS)
         lines.append(f"| {r.model} | {cells} |")
     lines += latency_section(results)
+    lines += cost_section(results, assumptions)
     lines += privacy_section(results)
     lines += [
         "",
@@ -398,15 +491,28 @@ def _pct(rate: float | None) -> float | None:
     return None if rate is None else rate * 100
 
 
-def write_report(results: list[ModelResult], out_dir: Path, title: str) -> Path:
+def write_report(
+    results: list[ModelResult],
+    out_dir: Path,
+    title: str,
+    assumptions: CostAssumptions | None = None,
+) -> Path:
     if len(results) < 2:
         raise ReportError("a comparison needs at least two suite runs")
     out_dir.mkdir(parents=True, exist_ok=True)
     chart = "quality_vs_speed.svg"
     (out_dir / chart).write_text(quality_speed_svg(results), encoding="utf-8", newline="\n")
     (out_dir / "README.md").write_text(
-        render_markdown(results, title, chart), encoding="utf-8", newline="\n"
+        render_markdown(results, title, chart, assumptions), encoding="utf-8", newline="\n"
     )
+    if assumptions is not None:
+        _write_json(
+            out_dir / "cost.json",
+            {
+                "assumptions": assumptions.model_dump(mode="json"),
+                "models": {r.model: r.cost.record() if r.cost else None for r in results},
+            },
+        )
     _write_json(out_dir / "summaries.json", [r.summary for r in results])
     _write_json(out_dir / "manifests.json", [r.manifest for r in results])
     return out_dir / "README.md"

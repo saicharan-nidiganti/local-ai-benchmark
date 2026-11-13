@@ -200,7 +200,7 @@ the summaries and manifests as JSON. `python -m local_ai_benchmark` works in pla
 | `ask` | One prompt, one measured run, its metrics printed |
 | `benchmark` | One prompt, warm-up runs, then repeated measured runs and their summary; `--cold` unloads the model before every run |
 | `suite` | Every task of a suite (or one kind with `--tasks`), each reply scored |
-| `report` | The latest suite run of each comparison model, or the `--run-id`s given, as a results folder; adds latency targets when a model has a cold benchmark |
+| `report` | The latest suite run of each comparison model, or the `--run-id`s given, as a results folder; adds latency targets when a model has a cold benchmark, and cost with `--cost configs/cost.yaml` |
 | `summarize` | Rebuilds the summary of any run ID from the log; `--list` lists them |
 
 `--model` takes an Ollama tag or an id from [configs/models.yaml](configs/models.yaml).
@@ -278,7 +278,7 @@ Gates and requirements per phase: [docs/roadmap.md](docs/roadmap.md) and
 ```text
 .github/                  CI workflow, issue and pull request templates, CODEOWNERS, Dependabot
 benchmarks/               versioned task suites: support_triage_v1, 15 fictional tickets
-configs/                  benchmark settings and the model registry
+configs/                  benchmark settings, the model registry and cost assumptions
 data/raw/                 run log and manifests (git-ignored)
 data/processed/           derived data (git-ignored)
 docs/                     requirements, architecture, methodology, environment, roadmap
@@ -296,6 +296,7 @@ src/local_ai_benchmark/
   metrics.py              run log, run IDs, medians and spreads
   report.py               comparison report: verdict, tables and chart
   targets.py              latency targets for interactive use, with their sources
+  cost.py                 cost per million tokens and per 1,000 tasks, local against hosted
   paths.py                where the project and the run log live
 tests/                    offline test suite
 ```

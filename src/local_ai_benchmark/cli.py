@@ -12,7 +12,7 @@ from typing import Any
 import httpx
 import ollama
 
-from . import __version__, manifest, preflight, report, runtime, scorers
+from . import __version__, cost, manifest, preflight, report, runtime, scorers
 from .config import (
     BenchmarkSettings,
     ConfigError,
@@ -325,12 +325,16 @@ def report_command(args: argparse.Namespace) -> None:
     suite = load_suite(args.suite or default_suite_path())
     registry = load_models(args.models or default_file(project_root(), "models.yaml"))
     run_ids = args.run_id or latest_suite_runs(records, registry)
+    assumptions = cost.load_cost(args.cost) if args.cost else None
     results = []
     for run_id in run_ids:
         _, selected = select_run(records, run_id)
         result = report.model_result(run_id, selected, suite, manifests.get(run_id))
-        results.append(report.with_cold_start(result, latest_cold_start(records, result.model)))
-    path = report.write_report(results, args.out_dir, args.title)
+        result = report.with_cold_start(result, latest_cold_start(records, result.model))
+        if assumptions is not None:
+            result = report.with_cost(result, cost.cost_of(selected, result.model, assumptions))
+        results.append(result)
+    path = report.write_report(results, args.out_dir, args.title, assumptions)
     found = report.verdict(results)
     print(f"Most accurate: {found.most_accurate}")
     print(f"Fastest: {found.fastest}")
@@ -456,6 +460,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_rep.add_argument("--suite", type=Path, help=suite_help)
     p_rep.add_argument("--models", type=Path, help="model registry (default: configs/models.yaml)")
     p_rep.add_argument("--output", type=Path, help="run log to read (default: as for benchmark)")
+    p_rep.add_argument(
+        "--cost",
+        type=Path,
+        help="cost assumptions (for example configs/cost.yaml): adds the cost section",
+    )
     p_rep.set_defaults(func=report_command)
 
     p_sum = sub.add_parser(

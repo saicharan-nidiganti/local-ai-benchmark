@@ -207,3 +207,38 @@ def test_without_cold_starts_there_is_no_latency_section():
     results = [result("r1", "a", 0.9, 30.0), result("r2", "b", 0.8, 50.0)]
 
     assert "Latency targets" not in report.render_markdown(results, "x", "chart.svg")
+
+
+def test_cost_assumptions_add_the_cost_section_and_cost_json(tmp_path):
+    from local_ai_benchmark import cost
+
+    loaded = cost.load_cost(Path(__file__).resolve().parents[1] / "configs" / "cost.yaml")
+    records = suite_records("r1", "phi4-mini", 0.9, 30.0)
+    for row in records:
+        row.update(output_tokens=50, prompt_tokens=200)
+    priced = report.with_cost(
+        report.model_result("r1", records, SUITE, None),
+        cost.cost_of(records, "phi4-mini", loaded),
+    )
+    results = [priced, result("r2", "unpriced", 0.8, 50.0)]
+
+    readme = report.write_report(results, tmp_path, "x", loaded)
+
+    text = readme.read_text(encoding="utf-8")
+    assert "## Cost" in text
+    assert "| unpriced | n/a | n/a | n/a | n/a | n/a |" in text
+    assert "Azure AI Foundry (Phi-4-mini)" in text
+    assert "TGSPDCL" in text
+    saved = json.loads((tmp_path / "cost.json").read_text(encoding="utf-8"))
+    assert saved["models"]["unpriced"] is None
+    assert saved["models"]["phi4-mini"]["hosted_provider"] == "Azure AI Foundry (Phi-4-mini)"
+    assert saved["assumptions"]["electricity"]["price_per_kwh"] == 7.7
+
+
+def test_without_cost_assumptions_there_is_no_cost_section(tmp_path):
+    results = [result("r1", "a", 0.9, 30.0), result("r2", "b", 0.8, 50.0)]
+
+    report.write_report(results, tmp_path, "x")
+
+    assert "## Cost" not in (tmp_path / "README.md").read_text(encoding="utf-8")
+    assert not (tmp_path / "cost.json").exists()
