@@ -11,6 +11,15 @@ All notable changes to this project are recorded here. The format follows
 - ADR-0008: the task suite's use case is support-ticket triage: classify category and
   priority, extract fields as JSON, summarize in at most 40 words, all on fictional tickets
   ([#18](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/18)).
+- Task suite `support_triage_v1`: 15 fictional support tickets, three per category, each with
+  expected labels, fields and summary facts, expanded into 45 tasks with versioned prompts;
+  validated with pydantic, and tests check the data is fictional and self-consistent
+  ([#19](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/19)).
+
+### Removed
+
+- `benchmarks/prompts_v1.jsonl`, three unread prompts superseded by the task suite
+  ([#19](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/19)).
 
 ## [0.1.0] - 2026-11-13
 

@@ -183,7 +183,7 @@ Gates and requirements per phase: [docs/roadmap.md](docs/roadmap.md) and
 
 ```text
 .github/                  CI workflow, issue and pull request templates
-benchmarks/               versioned task suites
+benchmarks/               versioned task suites: support_triage_v1, 15 fictional tickets
 configs/                  benchmark settings and model definitions
 data/raw/                 run log (git-ignored)
 docs/                     requirements, architecture, methodology, environment, roadmap
