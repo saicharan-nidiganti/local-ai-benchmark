@@ -121,6 +121,21 @@ uv run local-ai-benchmark summarize --run-id <run ID>   # default: the latest
 
 ## Results
 
+Three small models on the reference laptop (Ryzen 9 5900HX, RTX 3050 4 GB), 45 support-ticket
+tasks each, Q4_K_M, same settings:
+
+| Model | Quality (0 to 1) | Decode speed | Median task latency | GPU energy per task | On GPU |
+| --- | --- | --- | --- | --- | --- |
+| qwen3:4b-instruct | **0.89** | 30.3 tokens/s | 1.43 s | 56 J | 66% |
+| phi4-mini | **0.89** | 34.6 tokens/s | 1.24 s | 43 J | 64% |
+| llama3.2:3b | 0.81 | **53.0 tokens/s** | **0.75 s** | **29 J** | 80% |
+
+**phi4-mini is the best tradeoff**: the quality of qwen3:4b-instruct at 14% more speed and 23%
+less energy. llama3.2:3b is the fastest and matches the others on classification and
+extraction, but its summaries miss facts. Every model over-escalates ticket priority.
+Findings, the chart, every table and how to reproduce:
+[results/2026-11-13-three-model-comparison](results/2026-11-13-three-model-comparison/).
+
 Baseline on the reference laptop (Ryzen 9 5900HX, RTX 3050 4 GB), qwen3:4b Q4_K_M, 1 warm-up
 and 5 measured runs, 256 output tokens:
 

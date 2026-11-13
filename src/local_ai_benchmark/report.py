@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from html import escape
 from pathlib import Path
@@ -94,24 +95,80 @@ def _fmt(value: float | None, digits: int = 1, suffix: str = "") -> str:
     return "n/a" if value is None else f"{value:,.{digits}f}{suffix}"
 
 
+CHAR_WIDTH = 7.2  # estimated width of one character of a 13 px sans-serif label
+Box = tuple[float, float, float, float]  # left, top, right, bottom
+
+
+def _overlaps(a: Box, b: Box) -> bool:
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+
+def place_labels(
+    points: list[tuple[float, float, str]], bounds: Box
+) -> list[tuple[float, float, str]]:
+    """A position and anchor for each point's label: above right of the point if that is free,
+    otherwise below right, above left or below left, so close points keep readable labels."""
+    taken: list[Box] = [(px - 8, py - 8, px + 8, py + 8) for px, py, _ in points]
+    placed = []
+    for px, py, text in points:
+        width = len(text) * CHAR_WIDTH
+        options = [(11, -9, "start"), (11, 20, "start"), (-11, -9, "end"), (-11, 20, "end")]
+        choice = None
+        for dx, dy, anchor in options:
+            lx, ly = px + dx, py + dy
+            box = (
+                (lx, ly - 12, lx + width, ly + 3)
+                if anchor == "start"
+                else (lx - width, ly - 12, lx, ly + 3)
+            )
+            inside = bounds[0] <= box[0] and box[2] <= bounds[2] and bounds[1] <= box[1]
+            if inside and box[3] <= bounds[3] and not any(_overlaps(box, t) for t in taken):
+                choice = (lx, ly, anchor, box)
+                break
+        if choice is None:  # nowhere free: keep the first option
+            lx, ly = px + 11, py - 9
+            choice = (lx, ly, "start", (lx, ly - 12, lx + width, ly + 3))
+        taken.append(choice[3])
+        placed.append((choice[0], choice[1], choice[2]))
+    return placed
+
+
+def quality_axis(results: list[ModelResult]) -> tuple[float, float, float]:
+    """Lower end, upper end and grid step of the quality axis: zoomed to the data in steps of
+    0.1, always ending at 1, so close scores stay apart without hiding where 1 is."""
+    lowest = min(r.quality for r in results)
+    low = max(0.0, math.floor((lowest - TRADEOFF_MARGIN) * 10) / 10)
+    return low, 1.0, 0.1 if 1.0 - low <= 0.5 else 0.25
+
+
 def quality_speed_svg(results: list[ModelResult]) -> str:
-    """A scatter of overall quality against decode speed, one labelled point per model."""
+    """A scatter of overall quality against decode speed, one labelled point per model, with
+    the band of models within TRADEOFF_MARGIN of the best quality shaded."""
     width, height, left, right, top, bottom = 640, 400, 70, 30, 30, 60
     plot_w, plot_h = width - left - right, height - top - bottom
     max_speed = max(r.decode_speed for r in results) * 1.2 or 1.0
+    low, high, grid = quality_axis(results)
+    best = max(r.quality for r in results)
 
     def x(speed: float) -> float:
         return left + speed / max_speed * plot_w
 
     def y(quality: float) -> float:
-        return top + (1 - quality) * plot_h
+        return top + (high - quality) / (high - low) * plot_h
 
+    band_top, band_bottom = y(best), y(max(low, best - TRADEOFF_MARGIN))
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
         f'width="{width}" height="{height}" font-family="sans-serif" font-size="13">',
         f'<rect width="{width}" height="{height}" fill="white"/>',
+        f'<rect x="{left}" y="{band_top:.1f}" width="{plot_w}" '
+        f'height="{band_bottom - band_top:.1f}" fill="#dbeafe"/>',
+        f'<text x="{width - right - 6}" y="{band_bottom - 6:.1f}" text-anchor="end" '
+        f'fill="#1e40af" font-size="11">within {TRADEOFF_MARGIN:.2f} of the best quality</text>',
     ]
-    for q in (0.0, 0.25, 0.5, 0.75, 1.0):
+    steps = round((high - low) / grid)
+    for i in range(steps + 1):
+        q = low + i * grid
         parts.append(
             f'<line x1="{left}" y1="{y(q):.1f}" x2="{width - right}" y2="{y(q):.1f}" '
             'stroke="#e5e5e5"/>'
@@ -134,11 +191,13 @@ def quality_speed_svg(results: list[ModelResult]) -> str:
         f'<text transform="translate(18 {top + plot_h / 2}) rotate(-90)" text-anchor="middle" '
         'fill="#222">Overall quality (0 to 1)</text>',
     ]
-    for r in results:
-        cx, cy = x(r.decode_speed), y(r.quality)
+    points = [(x(r.decode_speed), y(r.quality), r.model) for r in results]
+    labels = place_labels(points, (left, top, width - right, height - bottom))
+    for (cx, cy, name), (lx, ly, anchor) in zip(points, labels, strict=True):
         parts.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="7" fill="#2563eb"/>')
         parts.append(
-            f'<text x="{cx + 11:.1f}" y="{cy - 9:.1f}" fill="#111">{escape(r.model)}</text>'
+            f'<text class="label" x="{lx:.1f}" y="{ly:.1f}" text-anchor="{anchor}" '
+            f'fill="#111">{escape(name)}</text>'
         )
     parts.append("</svg>")
     return "\n".join(parts) + "\n"
@@ -269,4 +328,6 @@ def write_report(results: list[ModelResult], out_dir: Path, title: str) -> Path:
 
 
 def _write_json(path: Path, value: Any) -> None:
-    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
+    )
