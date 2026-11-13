@@ -155,3 +155,28 @@ def test_the_worked_examples_share_no_phrase_with_the_suite():
 def test_every_variant_names_all_three_prompts():
     assert set(PROMPT_VARIANTS) == {"default", "rubric"}
     assert all(set(prompts) == set(TASK_KINDS) for prompts in PROMPT_VARIANTS.values())
+
+
+HOLDOUT = SUITE.with_name("support_triage_holdout_v1.jsonl")
+
+
+def test_the_holdout_suite_is_balanced_fictional_and_unseen():
+    holdout, v1 = load_suite(HOLDOUT), load_suite(SUITE)
+
+    def runs(text):
+        words = re.findall(r"[a-z0-9]+", text.lower())
+        return {" ".join(words[i : i + 5]) for i in range(len(words) - 4)}
+
+    seen = set().union(
+        *(runs(t.ticket) for t in v1.tickets), *(runs(text) for text, *_ in RUBRIC_EXAMPLES)
+    )
+    assert len(holdout.tickets) == 15
+    assert Counter(t.expected.category for t in holdout.tickets) == dict.fromkeys(CATEGORIES, 3)
+    assert {t.expected.priority for t in holdout.tickets} == set(PRIORITIES)
+    assert not {t.id for t in holdout.tickets} & {t.id for t in v1.tickets}
+    for t in holdout.tickets:
+        assert not runs(t.ticket) & seen, t.id  # no phrase from the suite or the examples
+        for address in re.findall(r"[\w.+-]+@[\w.-]+", t.ticket):
+            assert address.endswith("example.com"), (t.id, address)
+        assert t.expected.customer_name in t.ticket
+        assert t.expected.order_id is None or t.expected.order_id in t.ticket
