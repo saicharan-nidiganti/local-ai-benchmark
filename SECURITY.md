@@ -30,8 +30,9 @@ The project's purpose is to run language models without sending data anywhere.
   issues. Treat the raw log like the prompts it contains.
 - **The runtime.** Ollama is a separate program with its own update and network behaviour;
   see its documentation. Models are downloaded once with `ollama pull`, before any
-  measurement; after that, inference needs no network, which the published networking-off
-  run shows.
+  measurement; after that, inference needs no network, which the published
+  [networking-off run](results/2026-11-13-offline-privacy-latency-cost/) shows: the same 135
+  replies, and no connection to another machine.
 
 ## Dependencies
 

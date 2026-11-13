@@ -246,7 +246,8 @@ def latency_section(results: list[ModelResult]) -> list[str]:
             value = r.target_value(target.key)
             met = target.met(value)
             verdict = {True: "meets", False: "misses", None: "not measured"}[met]
-            cells.append(verdict if value is None else f"{_fmt(value, 1)}: {verdict}")
+            digits = 0 if target.unit == "ms" else 1
+            cells.append(verdict if value is None else f"{_fmt(value, digits)}: {verdict}")
         lines.append(f"| {r.model} | {' | '.join(cells)} |")
     lines += ["", "Why these limits:", ""]
     lines += [f"- **{t.name} {t.bound}:** {t.reason}." for t in TARGETS]
@@ -254,6 +255,11 @@ def latency_section(results: list[ModelResult]) -> list[str]:
         "",
         "Warm figures are medians over the suite run; the cold first token is the median of the "
         "model's latest `benchmark --cold`, each run starting with the model unloaded.",
+    ]
+    cold_runs = [f"{r.model} `{r.cold.get('run_id')}`" for r in results if r.cold is not None]
+    lines += [
+        "",
+        f"Cold benchmarks: {', '.join(cold_runs)} ([cold_starts.json](cold_starts.json)).",
     ]
     return lines
 
@@ -505,6 +511,8 @@ def write_report(
     (out_dir / "README.md").write_text(
         render_markdown(results, title, chart, assumptions), encoding="utf-8", newline="\n"
     )
+    if any(r.cold is not None for r in results):
+        _write_json(out_dir / "cold_starts.json", {r.model: r.cold for r in results})
     if assumptions is not None:
         _write_json(
             out_dir / "cost.json",
