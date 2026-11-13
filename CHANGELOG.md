@@ -6,6 +6,12 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- ADR-0008: the task suite's use case is support-ticket triage: classify category and
+  priority, extract fields as JSON, summarize in at most 40 words, all on fictional tickets
+  ([#18](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/18)).
+
 ## [0.1.0] - 2026-11-13
 
 The measurement harness (Phase 1) and the first published baseline.

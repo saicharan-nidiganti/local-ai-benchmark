@@ -12,8 +12,8 @@ constraints are understood and measured rather than asserted.
 ## Scope
 
 In scope: models served locally by [Ollama](https://ollama.com); a reference laptop with a
-4 GB GPU ([environment.md](environment.md)); one concrete, privacy-sensitive use case
-(chosen in [#18](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/18)).
+4 GB GPU ([environment.md](environment.md)); one concrete, privacy-sensitive use case:
+support-ticket triage ([ADR-0008](decisions/0008-use-case-support-ticket-triage.md)).
 
 Out of scope: hosted model APIs as a runtime (they appear only as a cost reference), model
 training or fine-tuning, multi-user serving, and GPUs larger than the reference machine.
