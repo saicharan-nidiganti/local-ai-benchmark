@@ -44,7 +44,7 @@ flowchart LR
 | Manifests | JSON Lines, `data/raw/manifests.jsonl` | One line per run ID, git-ignored | [ADR-0007](decisions/0007-run-identity-and-manifests.md) |
 | Configuration | YAML, `configs/benchmark.yaml` and `configs/models.yaml` | Versioned in git | Read on every command; flags override ([ADR-0006](decisions/0006-configuration-and-pinned-settings.md)) |
 | Task suites | JSON Lines, `benchmarks/support_triage_v1.jsonl` | Versioned in git | 15 fictional tickets, 45 tasks ([benchmarks/README.md](../benchmarks/README.md), [ADR-0008](decisions/0008-use-case-support-ticket-triage.md)) |
-| Reports | Markdown and figures, `reports/` | Curated output committed | **Planned**, Phase 3 ([#25](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/25)) |
+| Reports | A results folder: `README.md`, `quality_vs_speed.svg`, `summaries.json`, `manifests.json` | Curated output committed under `results/` | Written by `report` |
 
 ## 3. Components
 
@@ -61,7 +61,7 @@ flowchart TB
         manifest["manifest.py<br/>environment manifest,<br/>once per run ID"]
         sampler["sampler.py<br/>RAM, VRAM and GPU power<br/>during each run"]
         suite["suite.py, scorers.py<br/>tasks and scoring"]
-        report["report.py<br/>comparison report<br/>Phase 3 · #25"]:::planned
+        report["report.py<br/>comparison report,<br/>chart and verdict"]
         app["app.py<br/>offline application<br/>Phase 5 · #31"]:::planned
     end
     ollama[("Ollama server")]
@@ -75,10 +75,10 @@ flowchart TB
     preflight --> runtimeq
     runtimeq --> ollama
     cli --> suite
-    cli -.-> report
+    cli --> report
     cli --> sampler
     cli --> manifest
-    report -.-> log
+    report --> log
     app -.-> inference
     classDef planned stroke-dasharray: 5 3
 ```
@@ -97,6 +97,7 @@ Solid boxes and arrows exist today; dashed ones are planned.
 | `sampler.py` | Sample, in a background thread, system RAM, the memory of the Ollama server and its model runner, and GPU memory and power (`nvidia-smi`) while one request runs; summarize peaks, mean power and GPU energy | `ResourceSampler` (context manager), `summarize_samples(samples, duration_s)`, `ResourceSummary.record()` | `psutil`, `nvidia-smi` when present |
 | `suite.py` | Load and validate a suite file (pydantic: label sets, required keys, duplicate ids); expand each ticket into classify, extract and summarize tasks with the versioned prompts | `load_suite(path) -> Suite`, `Suite.tasks()`, `Task.prompt`, `SuiteError` | pydantic |
 | `scorers.py` | Score a reply from 0 to 1 for its task kind: label match, field accuracy, summary facts and length; judge JSON as strict, recovered or invalid, and schema-valid against pydantic models | `score(task, reply) -> Score`, `parse_json_object`, `normalize` | `suite`, pydantic |
+| `report.py` | Compare suite runs of several models: quality overall, per task kind and per ticket category; speed, GPU share, power and energy; the run identities; a verdict (most accurate, fastest, best tradeoff); and a quality-against-speed chart as SVG | `model_result(run_id, records, suite, manifest)`, `verdict(results)`, `write_report(results, out_dir, title)` | `metrics`, `suite` |
 | `paths.py` | Locate the project folder (`LOCAL_AI_BENCHMARK_HOME`, else the source checkout, else the working folder) and the default run log in it | `project_root()`, `default_run_log()` | standard library |
 
 Dependency rules: no module imports `cli`; only `inference` (generation) and `runtime`

@@ -104,6 +104,14 @@ uv run local-ai-benchmark suite --model qwen3-4b-instruct   # --tasks classify f
 uv run local-ai-benchmark suite --model phi4-mini --json-mode prompt # JSON from the prompt alone
 ```
 
+Compare the latest suite run of each comparison model in `configs/models.yaml` as a results
+folder (README with tables and a verdict, a quality-against-speed chart, summaries and
+manifests):
+
+```bash
+uv run local-ai-benchmark report --out-dir results/<date>-comparison --title "Three models"
+```
+
 Every benchmark and suite run gets a run ID. Rebuild its summary from the log at any time:
 
 ```bash
