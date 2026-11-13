@@ -949,3 +949,28 @@ def test_repair_beyond_its_bound_is_refused(capsys):
 
     assert exit_info.value.code == 2
     assert "invalid choice" in capsys.readouterr().err
+
+
+def test_the_suite_records_its_prompt_variant(monkeypatch, tmp_path):
+    prompts = []
+    monkeypatch.setattr(
+        cli, "generate", lambda **kw: prompts.append(kw["prompt"]) or answering_stub(**kw)
+    )
+    output = tmp_path / "runs.jsonl"
+
+    cli.main(["suite", "--model", "m", "--suite", str(two_ticket_suite(tmp_path)), "--tasks",
+              "classify", "--warmup-runs", "0", "--prompt-variant", "rubric",
+              "--output", str(output)])  # fmt: skip
+
+    records = read_jsonl(output)
+    assert {r["prompt_variant"] for r in records} == {"rubric"}
+    assert all("Choose the lowest priority that fits." in p for p in prompts)
+    assert cli.summary_of(records[0]["run_id"], records)["prompt_variant"] == "rubric"
+
+
+def test_an_unknown_prompt_variant_is_refused(capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["suite", "--model", "m", "--prompt-variant", "fewshot"])
+
+    assert exit_info.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err

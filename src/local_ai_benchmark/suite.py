@@ -49,6 +49,52 @@ PROMPTS: dict[str, str] = {
     ),
 }
 
+# Worked examples for the "rubric" variant. They are written for it and share no situation
+# with the suite's tickets, so the suite stays unseen (a test checks for shared phrases).
+RUBRIC_EXAMPLES: tuple[tuple[str, str, str], ...] = (
+    ("Do you deliver to Sri Lanka, and how long does it usually take? - Ana Costa",
+     "shipping", "low"),
+    ("The label printer I bought prints faint lines, but every label is still readable. - Ben Ito",
+     "technical", "medium"),
+    ("My parcel has been held at customs for a week and nobody can tell me when it will move. "
+     "- Chen Wu", "shipping", "medium"),
+    ("The blender I received will not turn on at all, so I cannot use it. I want a replacement. "
+     "- Dara Kim", "technical", "high"),
+    ("Since this morning none of our 40 staff can sign in to our team account, so the office "
+     "cannot work. - Eli Novak", "account", "urgent"),
+)  # fmt: skip
+
+
+def _rubric_classify() -> str:
+    examples = "\n".join(
+        f'Ticket: "{text}"\nAnswer: {{{{"category": "{category}", "priority": "{priority}"}}}}'
+        for text, category, priority in RUBRIC_EXAMPLES
+    )
+    return (
+        "You triage customer support tickets. Classify the ticket below.\n"
+        'Reply with only a JSON object: {{"category": "...", "priority": "..."}}\n'
+        "category is one of: billing (invoices, plans, prices, payment methods going forward), "
+        "refund (money back for an order or charge already paid), shipping (delivery status, "
+        "delays, addresses, lost parcels), technical (a product or the app does not work), "
+        "account (sign-in, profile, data, security).\n"
+        "priority is one of: urgent (a security problem, or the customer's business is stopped), "
+        "high (money lost, or the product unusable with no workaround), medium (a problem with "
+        "a workaround, or a delay), low (a question, a request or feedback).\n"
+        "Choose the lowest priority that fits. A delay is medium, however annoyed the customer "
+        "is. Anything that still works another way is medium. A question, or a request for a "
+        "document or a change, is low.\n\n"
+        f"Examples:\n{examples}\n\n"
+        "Ticket:\n{ticket}"
+    )
+
+
+# Named prompt sets. "default" is the suite version's own prompts; a variant changes some of
+# them and every record names the one it used, so results from different variants never mix.
+PROMPT_VARIANTS: dict[str, dict[str, str]] = {
+    "default": PROMPTS,
+    "rubric": {**PROMPTS, "classify": _rubric_classify()},
+}
+
 
 class SuiteError(ValueError):
     """A suite file is missing or has an invalid ticket; the message names the line."""
@@ -89,6 +135,7 @@ class Ticket(BaseModel):
 class Task:
     ticket: Ticket
     kind: TaskKind
+    variant: str = "default"
 
     @property
     def id(self) -> str:
@@ -96,7 +143,7 @@ class Task:
 
     @property
     def prompt(self) -> str:
-        return PROMPTS[self.kind].format(ticket=self.ticket.ticket)
+        return PROMPT_VARIANTS[self.variant][self.kind].format(ticket=self.ticket.ticket)
 
 
 @dataclass(frozen=True)
@@ -104,9 +151,9 @@ class Suite:
     name: str
     tickets: tuple[Ticket, ...]
 
-    def tasks(self) -> list[Task]:
-        """Ticket by ticket, each ticket's tasks in a fixed order."""
-        return [Task(ticket, kind) for ticket in self.tickets for kind in TASK_KINDS]
+    def tasks(self, variant: str = "default") -> list[Task]:
+        """Ticket by ticket, each ticket's tasks in a fixed order, with one prompt variant."""
+        return [Task(ticket, kind, variant) for ticket in self.tickets for kind in TASK_KINDS]
 
 
 def load_suite(path: str | Path) -> Suite:

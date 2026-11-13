@@ -37,7 +37,7 @@ from .metrics import (
 )
 from .paths import default_run_log, project_root
 from .sampler import ResourceSampler, ResourceSummary
-from .suite import TASK_KINDS, SuiteError, load_suite
+from .suite import PROMPT_VARIANTS, TASK_KINDS, SuiteError, load_suite
 
 NO_SAMPLES = ResourceSummary(0, None, None, None, None, None)
 
@@ -274,7 +274,7 @@ def suite_command(args: argparse.Namespace) -> None:
     unknown = sorted(set(kinds) - set(TASK_KINDS))
     if unknown:
         raise SuiteError(f"unknown task kind(s): {', '.join(unknown)}")
-    tasks = [task for task in suite.tasks() if task.kind in kinds]
+    tasks = [task for task in suite.tasks(args.prompt_variant) if task.kind in kinds]
     checked = check_runtime(settings, model, args.require_ac, args.allow_remote)
     print(f"Suite: {suite.name}, {len(tasks)} tasks x {args.repeats}, JSON mode: {args.json_mode}")
 
@@ -312,6 +312,7 @@ def suite_command(args: argparse.Namespace) -> None:
                 "ticket_id": task.ticket.id,
                 "task": task.kind,
                 "json_mode": args.json_mode if task.kind in scorers.JSON_SCHEMAS else None,
+                "prompt_variant": args.prompt_variant,
                 **run_fields(settings, model),
                 **measured,
                 **scored.record(),
@@ -541,6 +542,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_suite.add_argument(
         "--warmup-runs", type=int, help="unrecorded runs of the first task first (default: 1)"
+    )
+    p_suite.add_argument(
+        "--prompt-variant",
+        choices=tuple(PROMPT_VARIANTS),
+        default="default",
+        help="the prompts to use: default (the suite's own) or rubric (classify with a "
+        "priority rubric and worked examples)",
     )
     p_suite.add_argument(
         "--repair",
