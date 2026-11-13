@@ -9,7 +9,7 @@ dist/
 .venv*/
 .env
 
-# Tool caches and reports
+# Tool caches
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -21,7 +21,5 @@ htmlcov/
 # Run data: raw logs stay local; curated results are committed elsewhere
 data/raw/*.jsonl
 data/processed/*
-reports/figures/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
-!reports/figures/.gitkeep

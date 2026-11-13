@@ -249,9 +249,9 @@ data/raw/                 run log, git-ignored
 data/processed/           derived data, git-ignored
 docs/                     requirements, architecture, roadmap, methodology, environment
 docs/decisions/           architecture decision records
-reports/                  generated reports and figures (Phase 3)
-results/                  curated results: summary, runs and manifest per experiment
-src/local_ai_benchmark/   the package: cli, inference, metrics
+results/                  published results, one folder per experiment, written by report or by hand
+src/local_ai_benchmark/   the package: cli, inference, preflight, runtime, config, suite,
+                          scorers, sampler, manifest, metrics, report, paths
 tests/                    offline test suite
 CHANGELOG.md              changes per release, Keep a Changelog format
 CONTRIBUTING.md           setup, workflow, definition of done

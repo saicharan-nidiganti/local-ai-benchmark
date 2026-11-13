@@ -45,8 +45,18 @@ All notable changes to this project are recorded here. The format follows
   reasoning in the reply; ADR-0009 records the finding and the decision
   ([#21](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/21)).
 
+### Changed
+
+- README leads with the comparison: the verdict, the chart and the results table, then
+  how the numbers are controlled, a current architecture diagram, quality metrics, a
+  command reference with exit codes, and the engineering practices; the repository About
+  text, topics and website link describe the comparison
+  ([#55](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/55)).
+
 ### Removed
 
+- The empty `reports/` folder: reports are written under `results/`
+  ([#55](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/55)).
 - `benchmarks/prompts_v1.jsonl`, three unread prompts superseded by the task suite
   ([#19](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/19)).
 
