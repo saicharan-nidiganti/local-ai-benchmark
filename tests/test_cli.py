@@ -553,3 +553,54 @@ def test_json_tasks_send_their_schema_unless_prompt_mode_is_chosen(monkeypatch, 
     seen.clear()
     cli.main([*base, "--json-mode", "prompt"])
     assert seen == [None] * 6
+
+
+def test_report_compares_the_latest_suite_run_of_each_comparison_model(
+    monkeypatch, tmp_path, capsys
+):
+    registry = tmp_path / "models.yaml"
+    registry.write_text(
+        "models:\n"
+        "  - {id: a, name: 'model-a', role: comparison}\n"
+        "  - {id: b, name: 'model-b', role: comparison}\n"
+        "  - {id: c, name: 'model-c', role: baseline}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cli, "generate", answering_stub)
+    output = tmp_path / "runs.jsonl"
+    suite = two_ticket_suite(tmp_path)
+    for model in ("model-a", "model-b", "model-a"):
+        cli.main(["suite", "--model", model, "--suite", str(suite), "--warmup-runs", "0",
+                  "--models", str(registry), "--output", str(output)])  # fmt: skip
+    capsys.readouterr()
+    latest_a = [r for r in read_jsonl(output) if r["model"] == "model-a"][-1]["run_id"]
+
+    out_dir = tmp_path / "comparison"
+    cli.main(["report", "--out-dir", str(out_dir), "--suite", str(suite),
+              "--models", str(registry), "--output", str(output)])  # fmt: skip
+
+    printed = capsys.readouterr().out
+    assert "Most accurate:" in printed
+    summaries = json.loads((out_dir / "summaries.json").read_text(encoding="utf-8"))
+    assert [s["model"] for s in summaries] == ["model-a", "model-b"]
+    assert summaries[0]["run_id"] == latest_a
+    assert (out_dir / "README.md").is_file()
+
+
+def test_report_without_a_run_for_a_comparison_model_exits_2(monkeypatch, tmp_path, capsys):
+    registry = tmp_path / "models.yaml"
+    registry.write_text(
+        "models:\n  - {id: z, name: 'model-z', role: comparison}\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(cli, "generate", answering_stub)
+    output = tmp_path / "runs.jsonl"
+    cli.main(["suite", "--model", "m", "--suite", str(two_ticket_suite(tmp_path)),
+              "--warmup-runs", "0", "--output", str(output)])  # fmt: skip
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["report", "--out-dir", str(tmp_path / "x"), "--models", str(registry),
+                  "--suite", str(two_ticket_suite(tmp_path)),
+                  "--output", str(output)])  # fmt: skip
+
+    assert exit_info.value.code == 2
+    assert "no suite run for: model-z" in capsys.readouterr().err

@@ -63,6 +63,14 @@ recovered object, so a model is not punished twice for formatting; the strict ra
 reported beside it. **Schema-valid** means the object has the required keys and labels from
 the allowed sets.
 
+### Comparing models
+
+`report` compares one suite run per model, all on the same suite, settings and machine. Its
+verdict follows fixed rules: **most accurate** is the highest overall quality; **fastest** is
+the highest median decode speed; **best tradeoff** is the fastest model whose overall
+quality is within 0.05 of the most accurate one, the choice a team deploying on this laptop
+would make. The margin is a project constant (`TRADEOFF_MARGIN`), stated in every report.
+
 ### Resource use
 
 While each measured run executes, a background thread samples every 0.5 s

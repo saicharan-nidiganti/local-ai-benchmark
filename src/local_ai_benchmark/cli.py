@@ -11,7 +11,7 @@ from typing import Any
 import httpx
 import ollama
 
-from . import __version__, manifest, preflight, runtime, scorers
+from . import __version__, manifest, preflight, report, runtime, scorers
 from .config import (
     BenchmarkSettings,
     ConfigError,
@@ -188,7 +188,7 @@ def benchmark(args: argparse.Namespace) -> None:
 
 def suite_command(args: argparse.Namespace) -> None:
     settings, model = resolve(args)
-    suite = load_suite(args.suite or project_root() / "benchmarks" / "support_triage_v1.jsonl")
+    suite = load_suite(args.suite or default_suite_path())
     kinds = args.tasks.split(",") if args.tasks else list(TASK_KINDS)
     unknown = sorted(set(kinds) - set(TASK_KINDS))
     if unknown:
@@ -238,6 +238,42 @@ def suite_command(args: argparse.Namespace) -> None:
     print(f"\nQuality: overall {quality['overall']:.2f} ({parts})")
     print(f"Raw results: {output}")
     print(f"Summarize it again with: local-ai-benchmark summarize --run-id {run_id}")
+
+
+def default_suite_path() -> Path:
+    return project_root() / "benchmarks" / "support_triage_v1.jsonl"
+
+
+def latest_suite_runs(records: list[dict[str, Any]], models: list[ModelEntry]) -> list[str]:
+    """The latest suite run of each comparison model, in registry order."""
+    latest = {run.model: run.run_id for run in benchmark_runs(records) if run.run_type == "suite"}
+    chosen = [m for m in models if m.role == "comparison"]
+    missing = [m.name for m in chosen if m.name not in latest]
+    if missing:
+        raise report.ReportError(f"no suite run for: {', '.join(missing)}")
+    return [latest[m.name] for m in chosen]
+
+
+def report_command(args: argparse.Namespace) -> None:
+    log = run_log(args)
+    records = read_jsonl(log)
+    manifests_path = manifest.manifest_log(log)
+    manifests = (
+        {m["run_id"]: m for m in read_jsonl(manifests_path)} if manifests_path.is_file() else {}
+    )
+    suite = load_suite(args.suite or default_suite_path())
+    registry = load_models(args.models or default_file(project_root(), "models.yaml"))
+    run_ids = args.run_id or latest_suite_runs(records, registry)
+    results = []
+    for run_id in run_ids:
+        _, selected = select_run(records, run_id)
+        results.append(report.model_result(run_id, selected, suite, manifests.get(run_id)))
+    path = report.write_report(results, args.out_dir, args.title)
+    found = report.verdict(results)
+    print(f"Most accurate: {found.most_accurate}")
+    print(f"Fastest: {found.fastest}")
+    print(f"Best tradeoff: {found.best_tradeoff}")
+    print(f"Report: {path}")
 
 
 def summarize_command(args: argparse.Namespace) -> None:
@@ -304,15 +340,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_bench.add_argument("--warmup-runs", type=int, help="unrecorded runs first (default: 1)")
     p_bench.set_defaults(func=benchmark)
 
+    suite_help = "suite file (default: benchmarks/support_triage_v1.jsonl in the project folder)"
     p_suite = sub.add_parser(
         "suite", parents=[common], help="run and score every task of a task suite"
     )
     p_suite.add_argument("--model", required=True, help=model_help)
-    p_suite.add_argument(
-        "--suite",
-        type=Path,
-        help="suite file (default: benchmarks/support_triage_v1.jsonl in the project folder)",
-    )
+    p_suite.add_argument("--suite", type=Path, help=suite_help)
     p_suite.add_argument(
         "--tasks", help="comma-separated task kinds to run (default: classify,extract,summarize)"
     )
@@ -330,6 +363,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--warmup-runs", type=int, help="unrecorded runs of the first task first (default: 1)"
     )
     p_suite.set_defaults(func=suite_command)
+
+    p_rep = sub.add_parser(
+        "report", help="compare suite runs of several models as a results folder"
+    )
+    p_rep.add_argument(
+        "--run-id",
+        action="append",
+        help="a suite run to compare; repeat it (default: the latest run of each comparison model)",
+    )
+    p_rep.add_argument("--out-dir", type=Path, required=True, help="folder to write the report to")
+    p_rep.add_argument("--title", default="Model comparison", help="the report's heading")
+    p_rep.add_argument("--suite", type=Path, help=suite_help)
+    p_rep.add_argument("--models", type=Path, help="model registry (default: configs/models.yaml)")
+    p_rep.add_argument("--output", type=Path, help="run log to read (default: as for benchmark)")
+    p_rep.set_defaults(func=report_command)
 
     p_sum = sub.add_parser(
         "summarize", help="rebuild a benchmark's or a suite run's summary from the run log"
@@ -349,7 +397,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     args = parser.parse_args(argv)
     try:
         args.func(args)
-    except (ConfigError, RunLogError, SuiteError) as exc:
+    except (ConfigError, RunLogError, SuiteError, report.ReportError) as exc:
         parser.exit(2, f"local-ai-benchmark: error: {exc}\n")
     except preflight.PreflightError as exc:
         parser.exit(3, f"local-ai-benchmark: error: {exc}\n")
