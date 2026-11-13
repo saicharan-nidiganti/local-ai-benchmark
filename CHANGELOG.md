@@ -15,6 +15,10 @@ All notable changes to this project are recorded here. The format follows
   expected labels, fields and summary facts, expanded into 45 tasks with versioned prompts;
   validated with pydantic, and tests check the data is fictional and self-consistent
   ([#19](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/19)).
+- Automatic scorers for the three task kinds, each from 0 to 1: label match for classify,
+  field accuracy with pydantic schema checks for extract, required facts and the 40-word
+  limit for summarize; JSON judged as strict, recovered or invalid
+  ([#20](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/20)).
 
 ### Removed
 

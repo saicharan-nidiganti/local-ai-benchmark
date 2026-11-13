@@ -34,6 +34,26 @@ median stays the headline number; p90 and the IQR show how much a single run can
 
 This first implementation uses Ollama's generation metadata for token counts and generation duration, while TTFT is measured around the streamed client response.
 
+### Quality scoring
+
+Every task of the suite ([ADR-0008](decisions/0008-use-case-support-ticket-triage.md)) gets a
+score from 0 to 1, computed from the reply alone:
+
+| Task | Score |
+| --- | --- |
+| Classify | Half for the right category, half for the right priority; labels compared without case |
+| Extract | A quarter for each field: order number (case, spaces and a leading `#` ignored), customer name and product (equal or contained after normalizing), and issue (contains one of the expected keywords) |
+| Summarize | The share of required facts present; halved when the summary exceeds 40 words |
+
+Normalizing ignores case, punctuation and spacing, and keeps hyphens (`A-1042`). Missing
+values such as `null`, `none` or `N/A` count as no value.
+
+JSON is judged in two steps: **strict** when the whole reply is one JSON object, and **valid**
+when an object can be recovered from a code fence or surrounding prose. Scores use the
+recovered object, so a model is not punished twice for formatting; the strict rate is
+reported beside it. **Schema-valid** means the object has the required keys and labels from
+the allowed sets.
+
 ### Resource use
 
 While each measured run executes, a background thread samples every 0.5 s
