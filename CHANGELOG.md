@@ -6,6 +6,13 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A held-out suite, `support_triage_holdout_v1`: 15 new fictional tickets labelled by the same
+  rules as v1 and committed before any model was run on them, to check the priority rubric on
+  tickets it was not drawn from; a test checks it shares no phrase with v1 or the rubric's
+  examples ([#82](https://github.com/saicharan-nidiganti/local-ai-benchmark/issues/82)).
+
 ## [1.2.0] - 2026-11-13
 
 ### Changed

@@ -8,6 +8,14 @@ most 40 words). The use case, label sets and scoring are decided in
 | Suite | Tickets | Tasks | Notes |
 | --- | --- | --- | --- |
 | [support_triage_v1.jsonl](support_triage_v1.jsonl) | 15 | 45 | 3 tickets per category; every priority present |
+| [support_triage_holdout_v1.jsonl](support_triage_holdout_v1.jsonl) | 15 | 45 | Held out: 15 new tickets to check the priority rubric (#82), labelled and committed before any model was run on them |
+
+The held-out suite follows the same labelling as v1. **Priority:** urgent for a security
+problem or a stopped business; high for money lost or a product unusable with no workaround;
+medium for a problem with a workaround, or a delay; low for a question or a request.
+**Category:** refund only when money already paid should come back. It shares no five-word
+phrase with v1 or with the rubric's worked examples (a test checks), and its labels were on
+`main` before its first run, as the git history shows.
 
 ## Format
 
